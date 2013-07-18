@@ -280,7 +280,7 @@ void glut_display(){
     // reset it to default
     glLoadIdentity();
     // And transform in camera position
-    glTranslatef(translateX+0.1, translateY, translateZ);
+    glTranslatef(translateX-0.1, translateY, translateZ);
     glRotatef(rotateX, 1.0, 0.0, 0.0);
     glRotatef(rotateY, 0.0, 1.0, 0.0);
     // render from the vbo
@@ -297,7 +297,7 @@ void glut_display(){
     // reset it to default
     glLoadIdentity();
     // And transform in camera position
-    glTranslatef(translateX-0.1, translateY, translateZ);
+    glTranslatef(translateX+0.1, translateY, translateZ);
     glRotatef(rotateX, 1.0, 0.0, 0.0);
     glRotatef(rotateY, 0.0, 1.0, 0.0);
     // render from the vbo
