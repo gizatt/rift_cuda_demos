@@ -12,17 +12,18 @@
 
 // Us!
 #include "simple_particle_swirl.h"
+// And a helper player class
+#include "../common/player.h"
 
 // use protection guys
 using namespace std;
 using namespace OVR;
+using namespace xen_rift;
+
+//Global light direction
+float3 light_direction;
 
 //GLUT:
-// mouse controls (copied from CUDA SDK ocean example)
-int mouseOldX, mouseOldY;
-int mouseButtons = 0;
-float rotateX = 20.0f, rotateY = 0.0f;
-float translateX = 0.0f, translateY = 0.0f, translateZ = -2.0f;
 int screenX, screenY;
 //Frame counters
 int totalFrames = 0;
@@ -46,6 +47,9 @@ Ptr<SensorDevice> pSensor;
 HMDInfo hmd;
 SensorFusion SFusion;
 
+//Player manager
+Player player_manager(float3(), float2(), 1.6);
+
 /* #########################################################################
     
                             forward declarations
@@ -55,13 +59,17 @@ SensorFusion SFusion;
 void initOpenGL(int w, int h, void*d);
 //    GLUT display callback -- updates screen
 void glut_display();
+// Helper to draw the demo room itself
+void draw_demo_room();
 // GLUT idle callback -- launches a CUDA analysis cycle
 void glut_idle();
 //GLUT resize callback
 void resize(int width, int height);
 //Key handlers and mouse handlers; all callbacks for GLUT
 void normal_key_handler(unsigned char key, int x, int y);
+void normal_key_up_handler(unsigned char key, int x, int y);
 void special_key_handler(int key, int x, int y);
+void special_key_up_handler(int key, int x, int y);
 void mouse(int button, int state, int x, int y);
 void motion(int x, int y);
 
@@ -71,7 +79,8 @@ double get_framerate();
 double get_elapsed();
 
 // And the magnificent kernel!
-__global__ void d_simple_particle_swirl( float4* pos, float4* vels, unsigned int N, float dt); 
+__global__ void d_simple_particle_swirl( float4* pos, float4* vels, unsigned int N, float dt,
+        float3 player_pos, float3 light_dir); 
 
 /* #########################################################################
     
@@ -98,6 +107,7 @@ int main(int argc, char* argv[]) {
     if(!QueryPerformanceFrequency(&li))
         printf("QueryPerformanceFrequency failed!\n");
     perfFreq = (unsigned long)(li.QuadPart);
+
     //Rift init
     pManager = *DeviceManager::Create();
     printf("pManager: %p\n", pManager);
@@ -123,7 +133,9 @@ int main(int argc, char* argv[]) {
     glutIdleFunc( glut_idle );
     glutDisplayFunc( glut_display );
     glutKeyboardFunc ( normal_key_handler );
+    glutKeyboardUpFunc ( normal_key_up_handler );
     glutSpecialFunc ( special_key_handler );
+    glutSpecialUpFunc ( special_key_up_handler );
     glutMouseFunc(mouse);
     glutMotionFunc(motion);
     glutReshapeFunc(resize);
@@ -194,6 +206,10 @@ void initOpenGL(int w, int h, void*d = NULL) {
     glEnable (GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    //Define lighting
+    light_direction = make_float3(0.5, -1.0, 0.0);
+    light_direction = normalize(light_direction);
+
     //Clear viewport
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  
     
@@ -204,17 +220,22 @@ void initOpenGL(int w, int h, void*d = NULL) {
     if (!temppos){ printf("Memory alloc error.\n"); exit(1);}
     for(int i = 0; i < NUM_PARTICLES; i++)
     {
-        /* Initial position within 0.05 of <0, 0.5, 0> */
-        temppos[i].x = ((float)rand())/RAND_MAX * 0.1 - 0.05;
-        temppos[i].y = ((float)rand())/RAND_MAX * 0.1 + 0.45;
-        temppos[i].z = ((float)rand())/RAND_MAX * 0.1 - 0.05;
-        temppos[i].w = 1.0;
+        /* Initial position in 3-radius ring at y=3 */
+        float radius = ((float)rand())/RAND_MAX*2.7+0.3;
+        float theta = ((float)rand())/RAND_MAX*2*M_PI;
+        temppos[i].x = radius*cosf(theta);
+        temppos[i].y = ((float)rand())/RAND_MAX * 0.1 + 2.95;
+        temppos[i].z = radius*sinf(theta);
+        unsigned char * tmp = (unsigned char *)&(temppos[i].w);
+        tmp[0] = (unsigned char) 200;
+        tmp[1] = (unsigned char) 200;
+        tmp[2] = (unsigned char) 200;
+        tmp[3] = 255;
     }
     glBufferData( GL_ARRAY_BUFFER, BUFFER_SIZE, temppos, GL_DYNAMIC_DRAW );
     // (whenever I bind buffer index 0, that's just the way of unbinding
     //     openGL from any buffer...)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-    free(temppos);
     if (glGetError()){
         unsigned char * glErrorBuffer = (unsigned char *) gluErrorString(glGetError());
         printf("Opengl error: %s\n", glErrorBuffer);
@@ -228,14 +249,15 @@ void initOpenGL(int w, int h, void*d = NULL) {
     if (!tempvel){ printf("Memory alloc error.\n"); exit(1);}
     for(int i = 0; i < NUM_PARTICLES; i++)
     {
-        /* Initial velocity near <1, 0, 0> */
-        tempvel[i].x = ((float)rand())/RAND_MAX * 0.15 + 0.950;
+        /* Initial velocity around origin at 0, 3, 0 */
+        tempvel[i].x = ((float)rand())/RAND_MAX * 0.5 - 0.25 + temppos[i].z;
         tempvel[i].y = ((float)rand())/RAND_MAX * 0.05 - 0.025;
-        tempvel[i].z = ((float)rand())/RAND_MAX * 0.05 - 0.025;
+        tempvel[i].z = ((float)rand())/RAND_MAX * 0.5 - 0.25 - temppos[i].x;
         tempvel[i].w = 1.0;
     }
     CUDA_SAFE_CALL( cudaMemcpy( d_velocities, tempvel, BUFFER_SIZE, cudaMemcpyHostToDevice ) );
     free(tempvel);
+    free(temppos);
     //store our screen sizing information
     screenX = glutGet(GLUT_WINDOW_WIDTH);
     screenY = glutGet(GLUT_WINDOW_HEIGHT);
@@ -272,6 +294,9 @@ void glut_display(){
 
     // bring in vbo
     glBindBuffer(GL_ARRAY_BUFFER, *vbo);
+    // and get player location
+    float3 curr_translation = player_manager.get_position();
+    float2 curr_rotation = player_manager.get_rotation();
 
     //Left viewport:
     glViewport(0,0,screenX/2,screenY);
@@ -280,15 +305,23 @@ void glut_display(){
     // reset it to default
     glLoadIdentity();
     // And transform in camera position
-    glTranslatef(translateX-0.1, translateY, translateZ);
-    glRotatef(rotateX, 1.0, 0.0, 0.0);
-    glRotatef(rotateY, 0.0, 1.0, 0.0);
+    glRotatef(curr_rotation.x, 1.0, 0.0, 0.0);
+    glRotatef(curr_rotation.y, 0.0, 1.0, 0.0);   
+    glTranslatef(curr_translation.x-0.1, curr_translation.y, curr_translation.z);
     // render from the vbo
-    glVertexPointer(4, GL_FLOAT, 0, 0);
     glEnableClientState(GL_VERTEX_ARRAY);
-    glColor3f(1.0, 0.0, 0.0);
-    glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
+    glEnableClientState(GL_COLOR_ARRAY);
+    // Each 8-byte vertex in that buffer includes coodinate information
+    //  and color information:
+    //  byte index [ 0  1  2  3  4  5  6  7  8  9  10  11  12  13  14  15  ]
+    //  info       [ <x, float>  <y, float>  <z, float >   <r   g   b   a> ]
+    // These cmds instruct opengl to expect that:
+    glColorPointer(4,GL_UNSIGNED_BYTE,16,(void*)12);
+    glVertexPointer(3,GL_FLOAT,16,(void*)0);
+    glDrawArrays(GL_POINTS,0, NUM_PARTICLES);
     glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    draw_demo_room();
     
     //Right viewport:
     glViewport(screenX/2,0,screenX/2,screenY);
@@ -297,15 +330,23 @@ void glut_display(){
     // reset it to default
     glLoadIdentity();
     // And transform in camera position
-    glTranslatef(translateX+0.1, translateY, translateZ);
-    glRotatef(rotateX, 1.0, 0.0, 0.0);
-    glRotatef(rotateY, 0.0, 1.0, 0.0);
+    glRotatef(curr_rotation.x, 1.0, 0.0, 0.0);
+    glRotatef(curr_rotation.y, 0.0, 1.0, 0.0);
+    glTranslatef(curr_translation.x+0.1, curr_translation.y, curr_translation.z);
     // render from the vbo
-    glVertexPointer(4, GL_FLOAT, 0, 0);
     glEnableClientState(GL_VERTEX_ARRAY);
-    glColor3f(1.0, 0.0, 0.0);
-    glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
+    glEnableClientState(GL_COLOR_ARRAY);
+    // Each 8-byte vertex in that buffer includes coodinate information
+    //  and color information:
+    //  byte index [ 0  1  2  3  4  5  6  7  8  9  10  11  12  13  14  15  ]
+    //  info       [ <x, float>  <y, float>  <z, float >   <r   g   b   a> ]
+    // These cmds instruct opengl to expect that:
+    glColorPointer(4,GL_UNSIGNED_BYTE,16,(void*)12);
+    glVertexPointer(3,GL_FLOAT,16,(void*)0);
+    glDrawArrays(GL_POINTS,0, NUM_PARTICLES);
     glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    draw_demo_room();
 
     // swap whole screen
     glutSwapBuffers();   
@@ -321,7 +362,9 @@ void glut_display(){
 
     //output useful framerate and status info:
     printf ("framerate: %3.1f / %4.1f\n", curr, currFrameRate);
-    
+    // frame was rendered, give the player handler a tick
+    player_manager.on_frame_render();
+
     //Unbind, restore cuda access to buffer, and continue:
     /*
     glDisableClientState( GL_COLOR_ARRAY );
@@ -338,6 +381,25 @@ void glut_display(){
     totalFrames++;
 }
 
+/* #########################################################################
+    
+                                draw_demo_room
+                                            
+        -Helper to draw demo room: basic walls, floor, environ, etc.
+            If this becomes fancy enough / dynamic I may go throw it in
+            its own file.
+
+   ######################################################################### */
+void draw_demo_room(){
+    glBegin(GL_QUADS);
+    /* Floor */
+    glColor3f(1.0, 1.0, 1.0);
+    glVertex3f(-10,0,-10);
+    glVertex3f(10,0,-10);
+    glVertex3f(10,0,10);
+    glVertex3f(-10,0,10);
+    glEnd();
+}
 
 /* #########################################################################
     
@@ -360,7 +422,8 @@ void glut_idle(){
 
     // execute the kernel
     if (framesRendered > 0) 
-        d_simple_particle_swirl<<< GRID_SIZE, BLOCK_SIZE >>>(dptr, d_velocities, NUM_PARTICLES, dt);
+        d_simple_particle_swirl<<< GRID_SIZE, BLOCK_SIZE >>>(dptr, d_velocities, NUM_PARTICLES, dt,
+            player_manager.get_position(), light_direction);
 
     // unmap buffer object
     CUDA_SAFE_CALL(cudaGraphicsUnmapResources(1, resources, 0));
@@ -374,37 +437,47 @@ void glut_idle(){
                               normal_key_handler
                               
         -GLUT callback for non-special (generic letters and such)
-          keypresses.
-        -If escape is pressed, cleans up and exits.
+          keypresses and releases.
         
    ######################################################################### */    
 void normal_key_handler(unsigned char key, int x, int y) {
-
+    player_manager.normal_key_handler(key, x, y);
     switch (key) {
         default:
-            printf("Unhandled key %u\n", key);
             break;
     }
 }
-
+void normal_key_up_handler(unsigned char key, int x, int y) {
+    player_manager.normal_key_up_handler(key, x, y);
+    switch (key) {
+        default:
+            break;
+    }
+}
 
 /* #########################################################################
     
                               special_key_handler
                               
         -GLUT callback for special (arrow keys, F keys, etc)
-          keypresses.
+          keypresses and releases.
         -Binds up/down to adjusting parameters
         
    ######################################################################### */    
 void special_key_handler(int key, int x, int y){
+    player_manager.special_key_handler(key, x, y);
     switch (key) {
         default:
-            printf("Unhandled key %u\n", key);
             break;
     }
 }
-
+void special_key_up_handler(int key, int x, int y){
+    player_manager.special_key_up_handler(key, x, y);
+    switch (key) {
+        default:
+            break;
+    }
+}
 
 /* #########################################################################
     
@@ -417,14 +490,7 @@ void special_key_handler(int key, int x, int y){
         
    ######################################################################### */    
 void mouse(int button, int state, int x, int y){
-    if (state == GLUT_DOWN) {
-        mouseButtons |= 1<<button;
-    } else if (state == GLUT_UP) {
-        mouseButtons = 0;
-    }
-
-    mouseOldX = x;
-    mouseOldY = y;
+    player_manager.mouse(button, state, x, y);
 }
 
 
@@ -437,22 +503,7 @@ void mouse(int button, int state, int x, int y){
         
    ######################################################################### */    
 void motion(int x, int y){
-    float dx, dy;
-    dx = (float)(x - mouseOldX);
-    dy = (float)(y - mouseOldY);
-
-    if (mouseButtons == 1) {
-        rotateX += dy * 0.2f;
-        rotateY += dx * 0.2f;
-    } else if (mouseButtons == 2) {
-        translateX += dx * 0.01f;
-        translateY -= dy * 0.01f;        
-    } else if (mouseButtons == 4) {
-        translateZ += dy * 0.01f;
-    }
-
-    mouseOldX = x;
-    mouseOldY = y;
+    player_manager.motion(x, y);
 }
 
 
@@ -507,21 +558,32 @@ double get_elapsed(){
                                     KERNEL!
         
    ######################################################################### */ 
-__global__ void d_simple_particle_swirl(float4* pos, float4* vels, unsigned int N, float dt)
+__global__ void d_simple_particle_swirl(float4* pos, float4* vels, unsigned int N, float dt,
+        float3 player_pos, float3 light_dir)
 {
     // Indices into the VBO data.
     unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
     if (i < N) {
-        /* Update vels to orbit origin */
+        /* Update vels to orbit <0, 3, 0> */
         float dist2 = pos[i].x*pos[i].x + pos[i].y*pos[i].y + pos[i].z*pos[i].z;
         if (dist2 != 0){
-            vels[i].x -= 0.01 * pos[i].x / dist2;
-            vels[i].y -= 0.01 * pos[i].y / dist2;
-            vels[i].z -= 0.01 * pos[i].z / dist2;
+            vels[i].x -= 0.1 * pos[i].x / dist2;
+            vels[i].y -= 0.1 * (pos[i].y - 3.0) / dist2;
+            vels[i].z -= 0.1 * pos[i].z / dist2;
         }
         /* And update position based on velocity */
         pos[i].x += vels[i].x*dt/1000.0;
         pos[i].y += vels[i].y*dt/1000.0;
         pos[i].z += vels[i].z*dt/1000.0;
+        /* Assign color as a rough diffuse lighting model */
+        float3 to_our_pos = normalize(make_float3(pos[i].x - player_pos.x,
+                                                  pos[i].y - player_pos.y,
+                                                  pos[i].z - player_pos.z));
+        float value = dot(to_our_pos, light_dir)*100.0+150.0;
+        unsigned char * tmp = (unsigned char *)&(pos[i]);
+        tmp[12] = (unsigned char)(value);
+        tmp[13] = (unsigned char)(50); 
+        tmp[14] = (unsigned char)(10); 
+        tmp[15] = (unsigned char) 255;
     }
 }

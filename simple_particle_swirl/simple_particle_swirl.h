@@ -26,13 +26,15 @@
 //Rift
 #include "OVR.h"
 
-// Data dimensionality
-#define NUM_PARTICLES (1024*2000)
-// buffer size for particle positions or velocities: 
-#define BUFFER_SIZE (NUM_PARTICLES*sizeof(float4))
+namespace xen_rift {
+	// Data dimensionality
+	#define NUM_PARTICLES (1024*2000)
+	// buffer size for particle positions or velocities: 
+	#define BUFFER_SIZE (NUM_PARTICLES*sizeof(float4))
 
-// CUDA block size
-#define BLOCK_SIZE (1024)
-#define GRID_SIZE (NUM_PARTICLES/BLOCK_SIZE)
+	// CUDA block size
+	#define BLOCK_SIZE (1024)
+	#define GRID_SIZE (NUM_PARTICLES/BLOCK_SIZE)
+};
 
 #endif //__SIMPLE_PARTICLE_SWIRL_H
