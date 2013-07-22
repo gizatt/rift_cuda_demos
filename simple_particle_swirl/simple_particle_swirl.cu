@@ -41,6 +41,8 @@ cudaGraphicsResource *resources[1];
 float4* d_velocities;
 
 //Rift
+Rift rift_manager();
+
 Ptr<DeviceManager> pManager;
 Ptr<HMDDevice> pHMD;
 Ptr<SensorDevice> pSensor;
@@ -61,6 +63,8 @@ void initOpenGL(int w, int h, void*d);
 void glut_display();
 // Helper to draw the demo room itself
 void draw_demo_room();
+// and shared between eyes rendering core
+void render_core();
 // GLUT idle callback -- launches a CUDA analysis cycle
 void glut_idle();
 //GLUT resize callback
@@ -109,6 +113,8 @@ int main(int argc, char* argv[]) {
     perfFreq = (unsigned long)(li.QuadPart);
 
     //Rift init
+    rift_manager = Rift(1280, 720, true);
+    /*
     pManager = *DeviceManager::Create();
     printf("pManager: %p\n", pManager);
     if (pManager){
@@ -124,9 +130,10 @@ int main(int argc, char* argv[]) {
             SFusion.AttachToSensor(pSensor);
         printf("4\n");
     }
+    */
 
     //Go get openGL set up / get the critical glob. variables set up
-    initOpenGL(1024, 768, NULL);
+    initOpenGL(1280, 720, NULL);
 
 
     //Gotta register our callbacks
@@ -222,7 +229,7 @@ void initOpenGL(int w, int h, void*d = NULL) {
     {
         /* Initial position in 3-radius ring at y=3 */
         float radius = ((float)rand())/RAND_MAX*2.7+0.3;
-        float theta = ((float)rand())/RAND_MAX*2*M_PI;
+        float theta = ((float)rand())/RAND_MAX*2.0*M_PI/8.0;
         temppos[i].x = radius*cosf(theta);
         temppos[i].y = ((float)rand())/RAND_MAX * 0.1 + 2.95;
         temppos[i].z = radius*sinf(theta);
@@ -250,9 +257,9 @@ void initOpenGL(int w, int h, void*d = NULL) {
     for(int i = 0; i < NUM_PARTICLES; i++)
     {
         /* Initial velocity around origin at 0, 3, 0 */
-        tempvel[i].x = ((float)rand())/RAND_MAX * 0.5 - 0.25 + temppos[i].z;
-        tempvel[i].y = ((float)rand())/RAND_MAX * 0.05 - 0.025;
-        tempvel[i].z = ((float)rand())/RAND_MAX * 0.5 - 0.25 - temppos[i].x;
+        tempvel[i].x = ((float)rand())/RAND_MAX * 0.2 - 0.1 + temppos[i].z;
+        tempvel[i].y = ((float)rand())/RAND_MAX * 0.1 - 0.05;
+        tempvel[i].z = ((float)rand())/RAND_MAX * 0.2 - 0.1 - temppos[i].x;
         tempvel[i].w = 1.0;
     }
     CUDA_SAFE_CALL( cudaMemcpy( d_velocities, tempvel, BUFFER_SIZE, cudaMemcpyHostToDevice ) );
@@ -284,9 +291,6 @@ void resize(int width, int height){
             is in it, to OpenGL to render.
         
    ######################################################################### */    
-void render_core(){
-
-}
 void glut_display(){
 
     //Clear out buffers before rendering the new scene
@@ -297,7 +301,13 @@ void glut_display(){
     // and get player location
     float3 curr_translation = player_manager.get_position();
     float2 curr_rotation = player_manager.get_rotation();
+    Vector3f curr_t_vec(curr_translation[0], curr_translation[1], curr_translation[2]);
+    Vector3f curr_r_vec(curr_rotation[0], curr_rotation[1], 0.0f);
 
+    // Go do Rift rendering!
+    Rift::render(curr_t_vec, curr_r_vec, render_core);
+
+    /*
     //Left viewport:
     glViewport(0,0,screenX/2,screenY);
     // set view matrix
@@ -348,8 +358,10 @@ void glut_display(){
     glDisableClientState(GL_COLOR_ARRAY);
     draw_demo_room();
 
+
     // swap whole screen
     glutSwapBuffers();   
+    */
     // free vbo for CUDA
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -403,6 +415,30 @@ void draw_demo_room(){
 
 /* #########################################################################
     
+                                render_core
+        Render functionality shared between eyes.
+
+   ######################################################################### */
+void render_core(){
+    // render from the vbo
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
+    // Each 8-byte vertex in that buffer includes coodinate information
+    //  and color information:
+    //  byte index [ 0  1  2  3  4  5  6  7  8  9  10  11  12  13  14  15  ]
+    //  info       [ <x, float>  <y, float>  <z, float >   <r   g   b   a> ]
+    // These cmds instruct opengl to expect that:
+    glColorPointer(4,GL_UNSIGNED_BYTE,16,(void*)12);
+    glVertexPointer(3,GL_FLOAT,16,(void*)0);
+    glDrawArrays(GL_POINTS,0, NUM_PARTICLES);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+
+    draw_demo_room();
+}
+
+/* #########################################################################
+    
                                 glut_idle
                                             
         -Callback from GLUT: called as the idle function, as rapidly
@@ -427,6 +463,10 @@ void glut_idle(){
 
     // unmap buffer object
     CUDA_SAFE_CALL(cudaGraphicsUnmapResources(1, resources, 0));
+
+    // and let rift handler update
+    rift_manager.onIdle();
+
     framesRendered++;
     glutPostRedisplay();
 }
@@ -442,6 +482,7 @@ void glut_idle(){
    ######################################################################### */    
 void normal_key_handler(unsigned char key, int x, int y) {
     player_manager.normal_key_handler(key, x, y);
+    rift_manager.normal_key_handler(key, x, y);
     switch (key) {
         default:
             break;
@@ -449,6 +490,7 @@ void normal_key_handler(unsigned char key, int x, int y) {
 }
 void normal_key_up_handler(unsigned char key, int x, int y) {
     player_manager.normal_key_up_handler(key, x, y);
+    rift_manager.normal_key_up_handler(key, x, y);
     switch (key) {
         default:
             break;
@@ -466,6 +508,7 @@ void normal_key_up_handler(unsigned char key, int x, int y) {
    ######################################################################### */    
 void special_key_handler(int key, int x, int y){
     player_manager.special_key_handler(key, x, y);
+    rift_manager.special_key_handler(key, x, y);
     switch (key) {
         default:
             break;
@@ -473,6 +516,7 @@ void special_key_handler(int key, int x, int y){
 }
 void special_key_up_handler(int key, int x, int y){
     player_manager.special_key_up_handler(key, x, y);
+    rift_manager.special_key_up_handler(key, x, y);
     switch (key) {
         default:
             break;
@@ -491,6 +535,7 @@ void special_key_up_handler(int key, int x, int y){
    ######################################################################### */    
 void mouse(int button, int state, int x, int y){
     player_manager.mouse(button, state, x, y);
+    rift_manager.mouse(button, state, x, y);
 }
 
 
@@ -504,6 +549,7 @@ void mouse(int button, int state, int x, int y){
    ######################################################################### */    
 void motion(int x, int y){
     player_manager.motion(x, y);
+    rift_manager.motion(x, y);
 }
 
 
