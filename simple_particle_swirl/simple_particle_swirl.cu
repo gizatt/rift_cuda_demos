@@ -14,6 +14,7 @@
 #include "simple_particle_swirl.h"
 // And a helper player class
 #include "../common/player.h"
+#include "../common/rift.h"
 
 // use protection guys
 using namespace std;
@@ -40,8 +41,7 @@ cudaGraphicsResource *resources[1];
 // Device buffer variables
 float4* d_velocities;
 
-//Rift
-Rift rift_manager();
+
 
 Ptr<DeviceManager> pManager;
 Ptr<HMDDevice> pHMD;
@@ -51,6 +51,8 @@ SensorFusion SFusion;
 
 //Player manager
 Player player_manager(float3(), float2(), 1.6);
+//Rift
+Rift rift_manager(1280, 720, true);
 
 /* #########################################################################
     
@@ -112,8 +114,6 @@ int main(int argc, char* argv[]) {
         printf("QueryPerformanceFrequency failed!\n");
     perfFreq = (unsigned long)(li.QuadPart);
 
-    //Rift init
-    rift_manager = Rift(1280, 720, true);
     /*
     pManager = *DeviceManager::Create();
     printf("pManager: %p\n", pManager);
@@ -301,11 +301,11 @@ void glut_display(){
     // and get player location
     float3 curr_translation = player_manager.get_position();
     float2 curr_rotation = player_manager.get_rotation();
-    Vector3f curr_t_vec(curr_translation[0], curr_translation[1], curr_translation[2]);
-    Vector3f curr_r_vec(curr_rotation[0], curr_rotation[1], 0.0f);
+    Vector3f curr_t_vec(curr_translation.x, curr_translation.y, curr_translation.z);
+    Vector3f curr_r_vec(0.0f, curr_rotation.y*M_PI/180.0, 0.0f);
 
     // Go do Rift rendering!
-    Rift::render(curr_t_vec, curr_r_vec, render_core);
+    rift_manager.render(curr_t_vec, curr_r_vec, render_core);
 
     /*
     //Left viewport:
@@ -365,7 +365,6 @@ void glut_display(){
     // free vbo for CUDA
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-
     double curr = get_framerate();
     if (currFrameRate != 0.0f)
         currFrameRate = (10.0f*currFrameRate + curr)/11.0f;
@@ -373,23 +372,10 @@ void glut_display(){
         currFrameRate = curr;
 
     //output useful framerate and status info:
-    printf ("framerate: %3.1f / %4.1f\n", curr, currFrameRate);
+    //printf ("framerate: %3.1f / %4.1f\n", curr, currFrameRate);
     // frame was rendered, give the player handler a tick
     player_manager.on_frame_render();
 
-    //Unbind, restore cuda access to buffer, and continue:
-    /*
-    glDisableClientState( GL_COLOR_ARRAY );
-    glDisableClientState( GL_VERTEX_ARRAY );
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    
-    HANDLE_ERROR( cudaGraphicsMapResources(1, resources, fftStream) );
-    size_t size;
-    HANDLE_ERROR( cudaGraphicsResourceGetMappedPointer((void **)(&vertexPointer), &size, resources[0]) );
-    
-    if (writelog) fprintf(log_file, "%05.5f, Exit refresh_screen\n", get_elapsed());
-    if (writelog) fflush(log_file);
-    */
     totalFrames++;
 }
 

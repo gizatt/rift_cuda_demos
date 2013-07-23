@@ -15,6 +15,11 @@ Player::Player(float3 init_position, float2 init_rotation, float init_eye_height
   _eye_height = init_eye_height;
   _position.y = -init_eye_height;
   _mouseButtons = 0;
+  _w_down = false;
+  _s_down = false;
+  _a_down = false;
+  _d_down = false;
+  _c_down = false;
 }
  
 void Player::on_frame_render(){
@@ -49,6 +54,9 @@ void Player::normal_key_handler(unsigned char key, int x, int y) {
     	case 'd':
     		_d_down = true;
     		break;
+        case 'c':
+            _c_down = true;
+            break;
         default:
             break;
     }
@@ -65,8 +73,11 @@ void Player::normal_key_up_handler(unsigned char key, int x, int y) {
     	case 'a':
     		_a_down = false;
     		break;
-    	case 'd':
-    		_d_down = false;
+        case 'd':
+            _d_down = false;
+            break;
+    	case 'c':
+    		_c_down = false;
     		break;
         default:
             break;
@@ -103,16 +114,17 @@ void Player::motion(int x, int y){
     dx = (float)(x - _mouseOldX);
     dy = (float)(y - _mouseOldY);
 
-    if (_mouseButtons == 1) {
-        _rotation.x += dy * 0.2f;
-        _rotation.y += dx * 0.2f;
-    } else if (_mouseButtons == 2) {
-        _position.x += dx * 0.01f;
-        _position.y -= dy * 0.01f;        
-    } else if (_mouseButtons == 4) {
-        _position.z += dy * 0.01f;
+    if (_c_down == false){
+        if (_mouseButtons == 1) {
+            //_rotation.x += dy * 0.2f;
+            _rotation.y += dx * 0.2f;
+        } else if (_mouseButtons == 2) {
+            _position.x += dx * 0.01f;
+            _position.y -= dy * 0.01f;        
+        } else if (_mouseButtons == 4) {
+            _position.z += dy * 0.01f;
+        }
     }
-
     _mouseOldX = x;
     _mouseOldY = y;
 }

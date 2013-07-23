@@ -48,6 +48,7 @@ namespace xen_rift {
 			bool _a_down;
 			bool _s_down;
 			bool _d_down;
+			bool _c_down;
 		private:
 	};
 };

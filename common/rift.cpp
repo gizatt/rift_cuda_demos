@@ -16,24 +16,26 @@ using namespace xen_rift;
 using namespace OVR;
 using namespace OVR::Util::Render;
 
-Rift::Rift(int inputHeight, int inputWidth, bool verbose) :
+Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
             // Stereo config helper
             _SConfig(),
             _PostProcess(PostProcess_Distortion),
             // timekeeping
             _mouselook(0),
-            _mouseButtons(0)
+            _mouseButtons(0),
+            _c_down(false)
             {
-
     _verbose = verbose;
 
+    System::Init(Log::ConfigureDefaultLog(LogMask_All));
     _pManager = *DeviceManager::Create();
+
     // We'll handle its messages.
     _pManager->SetMessageHandler(this);  
-
+    
     detect_prompt_t detectResult = PR_CONTINUE;
     const char* detectionMessage;
-
+    
     do 
     {
         // Release Sensor/HMD in case this is a retry.
@@ -156,7 +158,7 @@ void Rift::OnMessage(const Message& msg)
     }
 }
 
-void normal_key_handler(unsigned char key, int x, int y){
+void Rift::normal_key_handler(unsigned char key, int x, int y){
     switch (key){
         case 'R':
             _SFusion.Reset();
@@ -169,16 +171,21 @@ void normal_key_handler(unsigned char key, int x, int y){
         case '_':
             _SConfig.SetIPD(_SConfig.GetIPD() - 0.0005f);  
             break;     
+        case 'c':
+            _c_down = true;
+            break;
     }
 }
-void normal_key_up_handler(unsigned char key, int x, int y){
+void Rift::normal_key_up_handler(unsigned char key, int x, int y){
     switch (key){
+        case 'c':
+            _c_down = false;
         default:
             break;
     }
 }
 
-void special_key_handler(int key, int x, int y){
+void Rift::special_key_handler(int key, int x, int y){
     switch (key) {
         case GLUT_KEY_F1:
             _SConfig.SetStereoMode(Stereo_None);
@@ -194,11 +201,11 @@ void special_key_handler(int key, int x, int y){
             break;
     }
 }
-void special_key_up_handler(int key, int x, int y){
+void Rift::special_key_up_handler(int key, int x, int y){
     return;
 }
 
-void mouse(int button, int state, int x, int y) {
+void Rift::mouse(int button, int state, int x, int y) {
     if (state == GLUT_DOWN) {
         _mouseButtons |= 1<<button;
     } else if (state == GLUT_UP) {
@@ -209,20 +216,24 @@ void mouse(int button, int state, int x, int y) {
     return;
 }
 
-void motion(int x, int y) {
+void Rift::motion(int x, int y) {
     // mouse emulates head orientation
     float dx, dy;
     dx = (float)(x - _mouseOldX);
     dy = (float)(y - _mouseOldY);
 
-    if (_mouseButtons == 1) {
-        // left
-        _EyeYaw += dx * 0.001f;
-        _EyePitch += dy * 0.001f;
-    } else if (_mouseButtons == 2) {   
-    } else if (_mouseButtons == 4) {
-        // right
-        _EyeRoll += dx * 0.001f;
+    if (_c_down){
+
+        if (_mouseButtons == 1) {
+            // left
+            _EyeYaw += dx * 0.001f;
+            _EyePitch += dy * 0.001f;
+        } else if (_mouseButtons == 2) {   
+        } else if (_mouseButtons == 4) {
+            // right
+            _EyeRoll += dx * 0.001f;
+        }
+
     }
 
     _mouseOldX = x;
@@ -249,14 +260,12 @@ void Rift::onIdle() {
         _EyeYaw += (yaw - _LastSensorYaw);
         _LastSensorYaw = yaw;    
     }    
-
-
 }
 
 void Rift::render(Vector3f EyePos, Vector3f EyeRot, void (*draw_scene)(void)){
     // Rotate and position View Camera, using YawPitchRoll in BodyFrame coordinates.
-    Matrix4f rollPitchYaw = Matrix4f::RotationY(_EyeYaw+EyeRot.x) * 
-                            Matrix4f::RotationX(_EyePitch+EyeRot.y) *
+    Matrix4f rollPitchYaw = Matrix4f::RotationY(_EyeYaw+EyeRot.y) * 
+                            Matrix4f::RotationX(_EyePitch+EyeRot.x) *
                             Matrix4f::RotationZ(_EyeRoll+EyeRot.z);
     Vector3f up      = rollPitchYaw.Transform(UpVector);
     Vector3f forward = rollPitchYaw.Transform(ForwardVector);
@@ -273,23 +282,25 @@ void Rift::render(Vector3f EyePos, Vector3f EyeRot, void (*draw_scene)(void)){
     // This is what transformation would be without head modeling.    
     // View = Matrix4f::LookAtRH(EyePos, EyePos + forward, up);    
 
-    switch(SConfig.GetStereoMode())
+    switch(_SConfig.GetStereoMode())
     {
     case Stereo_None:
         render_one_eye(_SConfig.GetEyeRenderParams(StereoEye_Center), View, draw_scene);
         break;
 
     case Stereo_LeftRight_Multipass:
-        render_one_eye(_SConfig.GetEyeRenderParams(StereoEye_Left), View, draw_scene);
-        render_one_eye(_SConfig.GetEyeRenderParams(StereoEye_Right), View, draw_scene);
+        render_one_eye(_SConfig.GetEyeRenderParams(StereoEye_Left), View, EyePos, draw_scene);
+        render_one_eye(_SConfig.GetEyeRenderParams(StereoEye_Right), View, EyePos, draw_scene);
         break;
     }
+
+    glutSwapBuffers();  
 
 }
 
 // Render the scene for one eye.
 void Rift::render_one_eye(const StereoEyeParams& stereo, 
-                            Matrix4f view_mat, void (*draw_scene)(void))
+                            Matrix4f view_mat, Vector3f EyePos, void (*draw_scene)(void))
 {
     float renderScale = _SConfig.GetDistortionScale();
     Viewport VP = stereo.VP;
@@ -304,7 +315,9 @@ void Rift::render_one_eye(const StereoEyeParams& stereo,
     //pRender->Clear();
     //pRender->SetDepthMode(true, true);
     glViewport(VP.x,VP.y,VP.w,VP.h);
+
     glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
     GLfloat tmp[16];
     for (int i=0; i<3; i++)
         for (int j=0; j<3; j++)
@@ -313,17 +326,23 @@ void Rift::render_one_eye(const StereoEyeParams& stereo,
 
     // set view matrix
     glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    for (int i=0; i<3; i++)
+            tmp[i] = EyePos[i];
+    glTransform(tmp);
     for (int i=0; i<3; i++)
         for (int j=0; j<3; j++)
             tmp[i*4+j] = view_mat.M[i][j]; 
     glLoadMatrixf(tmp);
-
+    for (int i=0; i<3; i++)
+        for (int j=0; j<3; j++)
+            tmp[i*4+j] = viewadjust.M[i][j]; 
+    glMultMatrixf(tmp);
     // Call main renderer
     draw_scene();
     //Scene.Render(pRender, stereo.ViewAdjust * View);
 
     // finish up
     //pRender->FinishScene();
-    glutSwapBuffers();  
 }
 

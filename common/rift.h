@@ -35,7 +35,7 @@ namespace xen_rift {
 		PR_RETRY
 	} detect_prompt_t;
 
-	typedef enum _PostProcessType{
+	typedef enum _PostProcessType {
 	    PostProcess_None,
 	    PostProcess_Distortion
 	} PostProcessType;
@@ -46,7 +46,7 @@ namespace xen_rift {
 
 	class Rift : public OVR::MessageHandler {
 		public:
-			Rift(int inputHeight = 1280, int inputWidth = 720, bool verbose = true );
+			Rift(int inputWidth = 1280, int inputHeight = 720, bool verbose = true );
 			void Rift::OnMessage(const OVR::Message& msg);
 			// glut passthroughs
 			void normal_key_handler(unsigned char key, int x, int y);
@@ -64,7 +64,7 @@ namespace xen_rift {
 		    int                 _width;
 		    int 				_height;
 		    // Stereo view parameters.
-		    OVR::Util::Render::StereoConfig        _SConfig;
+		    OVR::Util::Render::StereoConfig    _SConfig;
 		    PostProcessType     _PostProcess;
 		    // *** Oculus HMD Variables
 		    OVR::Ptr<OVR::DeviceManager>  _pManager;
@@ -89,12 +89,13 @@ namespace xen_rift {
 			int _mouseOldX;
 			int _mouseOldY;
 			int _mouseButtons;
+			bool _c_down;
 
 			// verbose?
 			bool _verbose;
 
 		private:
 	};
-};
+}
 
 #endif //__XEN_PLAYER_H
