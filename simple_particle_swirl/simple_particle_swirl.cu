@@ -4,7 +4,13 @@
    Interfaces with the RIFT SDK and CUDA to demo... well,
    both. Fancy particle graphics, what's not to like!
 
-   read_from_due mockup to test reading from the arduino. 
+   Organized fairly haphazardly at the moment (class-ification to come
+   in the future, probably), but it's based on glut's callback system.
+   Function prototypes are listed below; main() does primarily initialization
+   of the various helper classes and rift sdk things that we need to get
+   up and running, sets up glut, and goes. Other functions do what they
+   advertise, either drawing, passing idle ticks to our helper objects,
+   passing input to helper objects, etc.
 
    Rev history:
      Gregory Izatt  20130717  Init revision

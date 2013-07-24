@@ -6,6 +6,14 @@
         Much reference to Rift SDK samples for ways of robustly handling
             failure cases.
 
+        Wraps the Rift SDK to manage its initialization (robust to lack
+        of device) and support reasonably flexible stereo rendering.
+        Keeping this updated with screen dimensions (mutators for
+        those are a %TODO) will allow this to be called as a core render
+        helper, passing its render() method a pointer to a render() function
+        that does the actual drawing (after view, perspective, modelview
+        are set).
+
    Rev history:
      Gregory Izatt  20130721  Init revision
    ######################################################################### */    
@@ -285,7 +293,7 @@ void Rift::render(Vector3f EyePos, Vector3f EyeRot, void (*draw_scene)(void)){
     switch(_SConfig.GetStereoMode())
     {
     case Stereo_None:
-        render_one_eye(_SConfig.GetEyeRenderParams(StereoEye_Center), View, draw_scene);
+        render_one_eye(_SConfig.GetEyeRenderParams(StereoEye_Center), View, EyePos, draw_scene);
         break;
 
     case Stereo_LeftRight_Multipass:
@@ -326,10 +334,8 @@ void Rift::render_one_eye(const StereoEyeParams& stereo,
 
     // set view matrix
     glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    for (int i=0; i<3; i++)
-            tmp[i] = EyePos[i];
-    glTransform(tmp);
+    //glLoadIdentity();
+    //glTranslatef( EyePos.x, EyePos.y, EyePos.z );
     for (int i=0; i<3; i++)
         for (int j=0; j<3; j++)
             tmp[i*4+j] = view_mat.M[i][j]; 

@@ -1,6 +1,14 @@
 /* #########################################################################
         Player class -- camera viewport and movement management.
 
+        Contains methods that map one-to-one with standard glut callbacks;
+    can be called on those callbacks (just feed through the arguments) to manage
+    a player position using rules built into this class.
+        (A good thing to do would be to make some virtual functions that can
+    be rewritten in children of this class to do specific rule implementations
+    for different motion support. For now, this is a true class, not just a 
+    base...)
+    
    Rev history:
      Gregory Izatt  20130718  Init revision
    ######################################################################### */    

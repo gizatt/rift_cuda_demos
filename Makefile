@@ -6,8 +6,12 @@ LFLAGS= -L./lib -L$(RIFTLDIR) -m32 -llibovr -lopengl32 -lUser32 -lGdi32 \
     -lglew32d -lcutil32d --optimize 9001 \
     -use_fast_math 
 ODIR=./obj
-RIFTIDIR=C:\Users\gizatt\Dropbox\Programming\xen_rift\OculusSDK\LibOVR\Include
-RIFTLDIR=C:\Users\gizatt\Dropbox\Programming\xen_rift\OculusSDK\LibOVR\Lib\Win32
+
+## UPDATE TO YOUR RIFTDIR
+## todo: pull riftdir from environmental variables, don't harcode here.
+RIFTDIR=C:\Users\gizatt\Dropbox\Programming\xen_rift\OculusSDK\LibOVR
+RIFTIDIR=$(RIFTDIR)\Include
+RIFTLDIR=$(RIFTDIR)\Lib\Win32
 
 
 simple_particle_swirl.exe: player.obj rift.obj \

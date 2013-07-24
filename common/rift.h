@@ -58,7 +58,7 @@ namespace xen_rift {
 			void onIdle( void );
 			void render(OVR::Vector3f EyePos, OVR::Vector3f EyeRot, void (*draw_scene)(void));
 			void render_one_eye(const OVR::Util::Render::StereoEyeParams& stereo, 
-                            OVR::Matrix4f view_mat, void (*draw_scene)(void));
+                            OVR::Matrix4f view_mat, OVR::Vector3f EyePos, void (*draw_scene)(void));
 		protected:
 		    // *** Rendering Variables
 		    int                 _width;
@@ -75,10 +75,14 @@ namespace xen_rift {
 
 		     // Position and look. The following apply:
 		    OVR::Vector3f       _EyePos;
-		    float               _EyeYaw;         // Rotation around Y, CCW positive when looking at RHS (X,Z) plane.
-		    float               _EyePitch;       // Pitch. If sensor is plugged in, only read from sensor.
-		    float               _EyeRoll;        // Roll, only accessible from Sensor.
-		    float               _LastSensorYaw;  // Stores previous Yaw value from to support computing delta.
+		    // Rotation around Y, CCW positive when looking at RHS (X,Z) plane.
+		    float               _EyeYaw;         
+		    // Pitch. If sensor is plugged in, only read from sensor.
+		    float               _EyePitch;       
+		    // Roll, only accessible from Sensor.
+		    float               _EyeRoll;        
+			// Stores previous Yaw value from to support computing delta.
+		    float               _LastSensorYaw;  
 
 		    // timekeeping
 		    LARGE_INTEGER _lasttime;
