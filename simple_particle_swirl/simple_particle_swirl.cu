@@ -398,10 +398,10 @@ void draw_demo_room(){
     glBegin(GL_QUADS);
     /* Floor */
     glColor3f(1.0, 1.0, 1.0);
-    glVertex3f(-10,0,-10);
-    glVertex3f(10,0,-10);
-    glVertex3f(10,0,10);
-    glVertex3f(-10,0,10);
+    glVertex3f(-10,-0.1,-10);
+    glVertex3f(10,-0.1,-10);
+    glVertex3f(10,-0.1,10);
+    glVertex3f(-10,-0.1,10);
     glEnd();
 }
 

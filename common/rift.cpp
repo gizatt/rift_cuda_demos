@@ -271,6 +271,10 @@ void Rift::onIdle() {
 }
 
 void Rift::render(Vector3f EyePos, Vector3f EyeRot, void (*draw_scene)(void)){
+
+    printf("Eyepos: %f, %f, %f; Rot %f, %f, %f\n", EyePos.x, EyePos.y, EyePos.z,
+            EyeRot.x, EyeRot.y, EyeRot.z);
+
     // Rotate and position View Camera, using YawPitchRoll in BodyFrame coordinates.
     Matrix4f rollPitchYaw = Matrix4f::RotationY(_EyeYaw+EyeRot.y) * 
                             Matrix4f::RotationX(_EyePitch+EyeRot.x) *
@@ -315,6 +319,8 @@ void Rift::render_one_eye(const StereoEyeParams& stereo,
     Matrix4f proj = stereo.Projection;
     Matrix4f viewadjust = stereo.ViewAdjust; // do I need this?
 
+    Matrix4f real_mv = viewadjust * view_mat;
+
     // apply postprocessing stuff
     //pRender->BeginScene(PostProcess);
 
@@ -323,27 +329,38 @@ void Rift::render_one_eye(const StereoEyeParams& stereo,
     //pRender->Clear();
     //pRender->SetDepthMode(true, true);
     glViewport(VP.x,VP.y,VP.w,VP.h);
+    //printf("Viewport: x:%d, y:%d, w:%d, h:%d\n", VP.x, VP.y, VP.w, VP.h);
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     GLfloat tmp[16];
-    for (int i=0; i<3; i++)
-        for (int j=0; j<3; j++)
+    printf("Projection:\n");
+    for (int i=0; i<4; i++){
+        printf("    ");
+        for (int j=0; j<4; j++){
             tmp[i*4+j] = proj.M[i][j]; 
+            printf("| %5f |", tmp[i*4+j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
     glLoadMatrixf(tmp);
 
     // set view matrix
     glMatrixMode(GL_MODELVIEW);
     //glLoadIdentity();
     //glTranslatef( EyePos.x, EyePos.y, EyePos.z );
-    for (int i=0; i<3; i++)
-        for (int j=0; j<3; j++)
-            tmp[i*4+j] = view_mat.M[i][j]; 
-    glLoadMatrixf(tmp);
-    for (int i=0; i<3; i++)
-        for (int j=0; j<3; j++)
-            tmp[i*4+j] = viewadjust.M[i][j]; 
-    glMultMatrixf(tmp);
+    printf("View:\n");
+    for (int i=0; i<4; i++){
+        printf("    ");
+        for (int j=0; j<4; j++){
+            tmp[i*4+j] = real_mv.M[i][j];
+            printf("| %5f |", tmp[i*4+j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+    
     // Call main renderer
     draw_scene();
     //Scene.Render(pRender, stereo.ViewAdjust * View);
