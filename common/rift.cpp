@@ -338,7 +338,8 @@ void Rift::render_one_eye(const StereoEyeParams& stereo,
     for (int i=0; i<4; i++){
         printf("    ");
         for (int j=0; j<4; j++){
-            tmp[i*4+j] = proj.M[i][j]; 
+            // make sure to transpose projection matrix... opengl is silly
+            tmp[j*4+i] = proj.M[i][j]; 
             printf("| %5f |", tmp[i*4+j]);
         }
         printf("\n");
@@ -360,7 +361,7 @@ void Rift::render_one_eye(const StereoEyeParams& stereo,
         printf("\n");
     }
     printf("\n");
-    
+
     // Call main renderer
     draw_scene();
     //Scene.Render(pRender, stereo.ViewAdjust * View);
