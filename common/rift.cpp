@@ -355,12 +355,14 @@ void Rift::render_one_eye(const StereoEyeParams& stereo,
     for (int i=0; i<4; i++){
         printf("    ");
         for (int j=0; j<4; j++){
-            tmp[i*4+j] = real_mv.M[i][j];
-            printf("| %5f |", tmp[i*4+j]);
+            tmp[j*4+i] = real_mv.M[i][j];
+            // tranpose this too...
+            printf("| %5f |", tmp[j*4+i]);
         }
         printf("\n");
     }
     printf("\n");
+    glLoadMatrixf(tmp);
 
     // Call main renderer
     draw_scene();
