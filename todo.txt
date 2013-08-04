@@ -1,0 +1,16 @@
+TODO:
+
+simple_particle_swirl:
+-add texture to ground, and maybe a mesh or two for scale. (start fleshing out
+the game itself now that framework is getting done, essentially)
+
+rift handler:
+-distortion pixel shader for rift readiness
+-framework for sensor fusion handler, though it'll def. need debugging
+when unit arrives
+
+player handler:
+-should utilities like body drawing be in the player manager? probably.
+Add basic body drawing (from mesh, maybe?).
+Add a better looking forward-HUD in there too -- some kind of pretty HUD that
+floats in front and responds to body movement, maybe.

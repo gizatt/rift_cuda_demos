@@ -233,11 +233,11 @@ void initOpenGL(int w, int h, void*d = NULL) {
     if (!temppos){ printf("Memory alloc error.\n"); exit(1);}
     for(int i = 0; i < NUM_PARTICLES; i++)
     {
-        /* Initial position in 3-radius ring at y=3 */
-        float radius = ((float)rand())/RAND_MAX*2.7+0.3;
+        /* Initial position in 30-radius ring at y=30 */
+        float radius = ((float)rand())/RAND_MAX*27.0+3.0;
         float theta = ((float)rand())/RAND_MAX*2.0*M_PI/8.0;
         temppos[i].x = radius*cosf(theta);
-        temppos[i].y = ((float)rand())/RAND_MAX * 0.1 + 2.95;
+        temppos[i].y = ((float)rand())/RAND_MAX * 1.0 + 29.5;
         temppos[i].z = radius*sinf(theta);
         unsigned char * tmp = (unsigned char *)&(temppos[i].w);
         tmp[0] = (unsigned char) 200;
@@ -262,10 +262,10 @@ void initOpenGL(int w, int h, void*d = NULL) {
     if (!tempvel){ printf("Memory alloc error.\n"); exit(1);}
     for(int i = 0; i < NUM_PARTICLES; i++)
     {
-        /* Initial velocity around origin at 0, 3, 0 */
-        tempvel[i].x = ((float)rand())/RAND_MAX * 0.2 - 0.1 + temppos[i].z;
-        tempvel[i].y = ((float)rand())/RAND_MAX * 0.1 - 0.05;
-        tempvel[i].z = ((float)rand())/RAND_MAX * 0.2 - 0.1 - temppos[i].x;
+        /* Initial velocity around origin at 0, 30, 0 */
+        tempvel[i].x = ((float)rand())/RAND_MAX * 2.0 - 1.0 + temppos[i].z;
+        tempvel[i].y = ((float)rand())/RAND_MAX * 1.0 - 0.5;
+        tempvel[i].z = ((float)rand())/RAND_MAX * 2.0 - 1.0 - temppos[i].x;
         tempvel[i].w = 1.0;
     }
     CUDA_SAFE_CALL( cudaMemcpy( d_velocities, tempvel, BUFFER_SIZE, cudaMemcpyHostToDevice ) );
@@ -397,11 +397,11 @@ void glut_display(){
 void draw_demo_room(){
     glBegin(GL_QUADS);
     /* Floor */
-    glColor3f(1.0, 1.0, 1.0);
-    glVertex3f(-10,-0.1,-10);
-    glVertex3f(10,-0.1,-10);
-    glVertex3f(10,-0.1,10);
-    glVertex3f(-10,-0.1,10);
+    glColor3f(0.7, 0.7, 0.7);
+    glVertex3f(-100.0,-0.1,-100.0);
+    glVertex3f(100.0,-0.1,-100.0);
+    glVertex3f(100.0,-0.1,100.0);
+    glVertex3f(-100.0,-0.1,100.0);
     glEnd();
 }
 
@@ -427,6 +427,19 @@ void render_core(){
     glDisableClientState(GL_COLOR_ARRAY);
 
     draw_demo_room();
+
+    // and draw in a guide pointing the view dir of the player
+    glBegin(GL_QUADS);
+    float3 fdir = player_manager.get_forward_dir();
+    float3 sdir = 0.05*player_manager.get_side_dir();
+    float3 udir = 0.05*player_manager.get_up_dir();
+    float3 ppos = player_manager.get_position();
+    glColor3f(1.0, 0.0, 0.0);
+    glVertex3f(ppos.x+fdir.x-0.5*sdir.x, ppos.y+fdir.y-0.5*udir.y, ppos.z+fdir.z-0.5*sdir.z);
+    glVertex3f(ppos.x+fdir.x-0.5*sdir.x, ppos.y+fdir.y+0.5*udir.y, ppos.z+fdir.z-0.5*sdir.z);
+    glVertex3f(ppos.x+fdir.x+0.5*sdir.x, ppos.y+fdir.y+0.5*udir.y, ppos.z+fdir.z+0.5*sdir.z);
+    glVertex3f(ppos.x+fdir.x+0.5*sdir.x, ppos.y+fdir.y-0.5*udir.y, ppos.z+fdir.z+0.5*sdir.z);
+    glEnd();
 }
 
 /* #########################################################################
@@ -605,9 +618,9 @@ __global__ void d_simple_particle_swirl(float4* pos, float4* vels, unsigned int 
         /* Update vels to orbit <0, 3, 0> */
         float dist2 = pos[i].x*pos[i].x + pos[i].y*pos[i].y + pos[i].z*pos[i].z;
         if (dist2 != 0){
-            vels[i].x -= 0.1 * pos[i].x / dist2;
-            vels[i].y -= 0.1 * (pos[i].y - 3.0) / dist2;
-            vels[i].z -= 0.1 * pos[i].z / dist2;
+            vels[i].x -= 10.0 * pos[i].x / dist2;
+            vels[i].y -= 10.0 * (pos[i].y - 30.0) / dist2;
+            vels[i].z -= 10.0 * pos[i].z / dist2;
         }
         /* And update position based on velocity */
         pos[i].x += vels[i].x*dt/1000.0;

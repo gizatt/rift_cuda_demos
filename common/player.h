@@ -37,6 +37,11 @@ namespace xen_rift {
 			void motion(int x, int y);
 			float3 get_position() { return _position; }
 			float2 get_rotation() { return _rotation; }
+			float3 get_forward_dir();
+			float3 get_side_dir();
+			float3 get_up_dir();
+			void draw_HUD();
+			
 		protected:
 			float3 _position;
 			float2 _rotation;

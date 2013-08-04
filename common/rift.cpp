@@ -234,8 +234,8 @@ void Rift::motion(int x, int y) {
 
         if (_mouseButtons == 1) {
             // left
-            _EyeYaw += dx * 0.001f;
-            _EyePitch += dy * 0.001f;
+            _EyeYaw -= dx * 0.001f;
+            _EyePitch -= dy * 0.001f;
         } else if (_mouseButtons == 2) {   
         } else if (_mouseButtons == 4) {
             // right
@@ -272,8 +272,8 @@ void Rift::onIdle() {
 
 void Rift::render(Vector3f EyePos, Vector3f EyeRot, void (*draw_scene)(void)){
 
-    printf("Eyepos: %f, %f, %f; Rot %f, %f, %f\n", EyePos.x, EyePos.y, EyePos.z,
-            EyeRot.x, EyeRot.y, EyeRot.z);
+    //printf("Eyepos: %f, %f, %f; Rot %f, %f, %f\n", EyePos.x, EyePos.y, EyePos.z,
+    //        EyeRot.x, EyeRot.y, EyeRot.z);
 
     // Rotate and position View Camera, using YawPitchRoll in BodyFrame coordinates.
     Matrix4f rollPitchYaw = Matrix4f::RotationY(_EyeYaw+EyeRot.y) * 
@@ -287,6 +287,7 @@ void Rift::render(Vector3f EyePos, Vector3f EyeRot, void (*draw_scene)(void)){
 
     Vector3f eyeCenterInHeadFrame(0.0f, headBaseToEyeHeight, -headBaseToEyeProtrusion);
     Vector3f shiftedEyePos = EyePos + rollPitchYaw.Transform(eyeCenterInHeadFrame);
+    //printf("Shifted Eye Pos: %f, %f, %f\n", shiftedEyePos.x, shiftedEyePos.y, shiftedEyePos.z);
     shiftedEyePos.y -= eyeCenterInHeadFrame.y; // Bring the head back down to original height
 
     Matrix4f View = Matrix4f::LookAtRH(shiftedEyePos, shiftedEyePos + forward, up); 
@@ -334,34 +335,34 @@ void Rift::render_one_eye(const StereoEyeParams& stereo,
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     GLfloat tmp[16];
-    printf("Projection:\n");
+    //printf("Projection:\n");
     for (int i=0; i<4; i++){
-        printf("    ");
+        //printf("    ");
         for (int j=0; j<4; j++){
             // make sure to transpose projection matrix... opengl is silly
             tmp[j*4+i] = proj.M[i][j]; 
-            printf("| %5f |", tmp[i*4+j]);
+            //printf("| %5f |", tmp[i*4+j]);
         }
-        printf("\n");
+        //printf("\n");
     }
-    printf("\n");
+    //printf("\n");
     glLoadMatrixf(tmp);
 
     // set view matrix
     glMatrixMode(GL_MODELVIEW);
     //glLoadIdentity();
     //glTranslatef( EyePos.x, EyePos.y, EyePos.z );
-    printf("View:\n");
+    //printf("View:\n");
     for (int i=0; i<4; i++){
-        printf("    ");
+        //printf("    ");
         for (int j=0; j<4; j++){
-            tmp[j*4+i] = real_mv.M[i][j];
             // tranpose this too...
-            printf("| %5f |", tmp[j*4+i]);
+            tmp[j*4+i] = real_mv.M[i][j];
+            //printf("| %5f |", tmp[j*4+i]);
         }
-        printf("\n");
+        //printf("\n");
     }
-    printf("\n");
+    //printf("\n");
     glLoadMatrixf(tmp);
 
     // Call main renderer
