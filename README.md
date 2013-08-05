@@ -10,10 +10,10 @@ RIFTIDIR and RIFTLDIR, specifically.) Then just run Make in that directory and, 
 a cascade of warnings (I'll try to deal with those eventually), a binary should pop
 out in ./bin. Yay!
 
-What it SHOULD render (it doesn't currently) is a flat thin white ground (-10->10 in
-x and z, y=0), and a bunch of swirling reddish particles overhead.
+What it currently renders is a flat thin white ground (-100->100 in
+x and z, y=-0.1), and a bunch of swirling reddish particles overhead.
 
-simple_particle_swirl.cu runs the made code, and has some brief outline in its header,
+simple_particle_swirl.cu holds the main code, and has some brief outline in its header,
 as well as a lot of prototypes up near the top. It is based on glut's callback structure,
 and isn't very fancy, but it does initialize and rely on two helpers, defined in common/:
 a Rift helper, which wraps the Rift SDK, and a Player helper, which can be fed arguments
@@ -30,5 +30,3 @@ rendering, AFTER modelview/perspective/view are set up, but BEFORE screen flippi
 (The idea is that the Rift helepr sets up the various view and model and such matrices,
 as well as distortion shaders as such, then calls the callback for both eyes setting
 viewport appropriately, then finally flips screen.)
-
-It doesn't work currently, because I such at opengl. aaah.
