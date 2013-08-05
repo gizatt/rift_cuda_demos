@@ -14,3 +14,55 @@ player handler:
 Add basic body drawing (from mesh, maybe?).
 Add a better looking forward-HUD in there too -- some kind of pretty HUD that
 floats in front and responds to body movement, maybe.
+
+
+
+
+
+
+
+vr jam
+
+-high contrast design -- wireframe, dark and light, but not jarring
+	makes for asset-light but powerful interface (and gameplay?)
+
+-DIVE-like in terms of screendoor but resolution instead of contrast limited
+	(plus moire)
+
+-limit to mouse/keyboard
+
+-want to do head-oriented control / interface, put emphasis on head movement somehow --
+	-- head lamp
+	-- endermen-like 
+
+-never touch keyboard? never remind user that they're wearing headset -- 
+	gamepad, just mouse, no controller but head?
+	EVEVR -- headset + gamepad but nothing else in cockpit can feel like joystick
+	have to force into VR mindset -- as much restricting input choices as granting
+		to make sure they actually try to utilize them
+		ex: TF2 regular WASD controls + HMD = just TF2 with nice monitor
+			(but headset isn't enough control for some games?)
+
+-never move player position outside of their control (except for emphasis?)
+
+Horror fits bill: limited input, dark and high-contrast (so easy asset wise)
+	but gimicky, unless it's really really really high quality
+
+Procedural generation for ze laziness
+
+Some inspirations, limited input + some procedural or dynamic generation:
+	audiosurf - 2 button rhythm off of a music track
+		(or maybe some kind of merger with rhythm heaven)
+		so like greebles but legit interactive
+	journey - minimalist naturalistic environment
+
+
+Head bobbing rave simulator to a target beat track (guitar/dj hero/rhythm heaven)
+	- gesture recognition on nodding
+	- audio recognition for song, extract beat pattern to perform
+
+Unicorn simulator
+	poke EVERYTHING with horn mounted on head
+	but no positional tracking yet so it'll feel wrong
+
+"Don't Stare" sort of game

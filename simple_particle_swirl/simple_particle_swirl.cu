@@ -60,6 +60,7 @@ Player player_manager(float3(), float2(), 1.6);
 //Rift
 Rift rift_manager(1280, 720, true);
 
+
 /* #########################################################################
     
                             forward declarations
@@ -428,18 +429,9 @@ void render_core(){
 
     draw_demo_room();
 
-    // and draw in a guide pointing the view dir of the player
-    glBegin(GL_QUADS);
-    float3 fdir = player_manager.get_forward_dir();
-    float3 sdir = 0.05*player_manager.get_side_dir();
-    float3 udir = 0.05*player_manager.get_up_dir();
-    float3 ppos = player_manager.get_position();
-    glColor3f(1.0, 0.0, 0.0);
-    glVertex3f(ppos.x+fdir.x-0.5*sdir.x, ppos.y+fdir.y-0.5*udir.y, ppos.z+fdir.z-0.5*sdir.z);
-    glVertex3f(ppos.x+fdir.x-0.5*sdir.x, ppos.y+fdir.y+0.5*udir.y, ppos.z+fdir.z-0.5*sdir.z);
-    glVertex3f(ppos.x+fdir.x+0.5*sdir.x, ppos.y+fdir.y+0.5*udir.y, ppos.z+fdir.z+0.5*sdir.z);
-    glVertex3f(ppos.x+fdir.x+0.5*sdir.x, ppos.y+fdir.y-0.5*udir.y, ppos.z+fdir.z+0.5*sdir.z);
-    glEnd();
+    // draw in front-guide
+    player_manager.draw_HUD();
+
 }
 
 /* #########################################################################
