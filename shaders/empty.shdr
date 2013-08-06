@@ -1,0 +1,12 @@
+//Credit to Luke Groeninger: https://github.com/dghost/glslRiftDistort
+#version 330
+
+layout(location = 0)in vec4 vert;
+
+uniform mat4 projection;
+uniform mat4 view;
+uniform mat4 model;
+
+void main()
+{
+}

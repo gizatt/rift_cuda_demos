@@ -57,6 +57,7 @@ namespace xen_rift {
 			void mouse(int button, int state, int x, int y);
 			void motion(int x, int y);
 			void onIdle( void );
+			void stereoWarp(GLuint outFBO, GLuint inTexture);
 			void render(OVR::Vector3f EyePos, OVR::Vector3f EyeRot, void (*draw_scene)(void));
 			void render_one_eye(const OVR::Util::Render::StereoEyeParams& stereo, 
                             OVR::Matrix4f view_mat, OVR::Vector3f EyePos, void (*draw_scene)(void));
@@ -89,11 +90,26 @@ namespace xen_rift {
 		    LARGE_INTEGER _lasttime;
 		    LARGE_INTEGER _currtime;
 
+		    // I have no idea what this is for.
+		    GLuint _nullVAO;
+
 		    // distortion shader nums
 		    GLuint _vshader_num;
 		    GLuint _fshader_num;
-		    // and its program
+		    GLuint _barrel_frag;
+		    GLuint _barrel_geom;
+		    GLuint _barrel_vert;
+
+		    // and programs
 		    GLuint _program_num;
+		    GLuint _warpShaderID;
+		    
+		    // framebuffer
+		    GLuint _fbo;
+		    GLuint _fbo_spare;
+		    GLuint _render_texture;
+		    GLuint _render_texture_spare;
+		    GLuint _render_depth;
 
 		    // mouselook enabled?
 		    bool _mouselook;

@@ -26,7 +26,7 @@ player.obj: common/player.cpp common/player.h
 	vcvars32
 	$(NVCC) $(CFLAGS) -I$(RIFTIDIR) $(LFLAGS) common/player.cpp -odir $(ODIR) -c $@
 
-rift.obj: common/rift.cpp common/rift.h
+rift.obj: xen_utils.obj common/rift.cpp common/rift.h
 	vcvars32
 	$(NVCC) $(CFLAGS) -I$(RIFTIDIR) $(LFLAGS) $(ODIR)/xen_utils.obj \
 		common/rift.cpp -odir $(ODIR) -c $@

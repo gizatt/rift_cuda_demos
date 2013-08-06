@@ -140,8 +140,10 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
     }
     _SConfig.Set2DAreaFov(DegreeToRad(85.0f));
 
+    glGenVertexArrays(1, &_nullVAO);
+    //glBindVertexArray(_nullVAO);
 
-    // Set up distortion frag shader
+    // Set up our regular shaders
     _program_num = glCreateProgram();
     load_shaders("../shaders/rift_vert_shader.vert", &_vshader_num, 
                 "../shaders/rift_frag_shader.frag", &_fshader_num);
@@ -149,7 +151,60 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
     glAttachShader(_program_num, _vshader_num);
     glLinkProgram(_program_num);
 
-    glUseProgram(_program_num);
+    // and warp shaders
+    _warpShaderID = glCreateProgram();
+    load_shaders("../shaders/empty.shdr", &_barrel_vert,
+                "../shaders/barrel.frag", &_barrel_frag, 
+                "../shaders/barrel.geom", &_barrel_geom);
+    glAttachShader( _warpShaderID, _barrel_frag);
+    glAttachShader( _warpShaderID, _barrel_geom);
+    glAttachShader( _warpShaderID, _barrel_vert);
+    glLinkProgram( _warpShaderID);
+
+    // And set up our rendering: render to texture
+    glGenFramebuffers(1, &_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
+    // The texture we're going to render to
+    glGenTextures(1, &_render_texture);
+    // "Bind" the newly created texture : all future texture functions will modify this texture
+    glBindTexture(GL_TEXTURE_2D,  _render_texture);
+    // Give an empty image to OpenGL ( the last "0" )
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _width, _height, 0,GL_RGB, GL_UNSIGNED_BYTE, 0);
+    // Poor filtering. Needed !
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    // Set "_render_texture" as our colour attachement #0
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _render_texture, 0);
+    // The depth buffer
+    //glGenRenderbuffers(1, &_render_depth);
+    //glBindRenderbuffer(GL_RENDERBUFFER, _render_depth);
+    //glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, _width, _height);
+    //glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _render_depth);
+
+    glGenFramebuffers(1, &_fbo_spare);
+    glBindFramebuffer(GL_FRAMEBUFFER, _fbo_spare);
+    glGenTextures(1, &_render_texture_spare);
+    glBindTexture(GL_TEXTURE_2D,  _render_texture_spare);
+    // Give an empty image to OpenGL ( the last "0" )
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _width, _height, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+    // Poor filtering. Needed !
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    // Set "_render_texture" as our colour attachement #0
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _render_texture_spare, 0);
+
+    // Set the list of draw buffers.
+    //GLenum DrawBuffers[2] = {GL_COLOR_ATTACHMENT0};
+    //glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
+    // framebuffer is ok?
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+        printf("Framebuffer problem.\n");
+        exit(1);
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    //glUseProgram(_program_num);
 
     QueryPerformanceCounter(&_lasttime);
 }
@@ -281,6 +336,86 @@ void Rift::onIdle() {
     }    
 }
 
+void Rift::stereoWarp(GLuint outFBO, GLuint inTexture)
+{
+    int tLoc;
+    // Draw final fbo to screen
+    glEnable(GL_TEXTURE_2D);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_DEPTH_TEST);
+    // Don't use a program.  That is, use the fixed funtion pipeline.
+    glUseProgram(_warpShaderID);
+    glActiveTexture(0);
+    glBindFramebuffer( GL_FRAMEBUFFER, outFBO );
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, inTexture);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    tLoc =  glGetUniformLocation(_warpShaderID,"Texture");
+    glUniform1i(tLoc,0);
+
+    glViewport(0,0,_width,_height);
+    // render a single triangle, coords don't matter
+    glBegin(GL_TRIANGLES);
+        glVertex3f(0, 0, 0);
+        glVertex3f(1, 0, 0);
+        glVertex3f(0, 1, 0);
+    glEnd(); 
+
+    // But make sure we get back to normal afterwards.
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
+    glDisable(GL_TEXTURE_2D);
+    glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+    glActiveTexture(0);
+    return;
+
+    //glBindVertexArray(_nullVAO);
+    glBindFramebuffer(GL_FRAMEBUFFER,outFBO);
+    glViewport(0,0,_width,_height);
+
+    glEnable(GL_TEXTURE_2D);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_DEPTH_TEST);
+    /* bind the shader for entire screen */
+    glUseProgram(_warpShaderID);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, inTexture);
+
+    tLoc =  glGetUniformLocation(_warpShaderID,"Texture");
+    glUniform1i(tLoc,0);
+    
+    /* set uniforms here */
+    // and sets the input vars so the shader knows how much to scale
+    //GLuint LensLCenterLoc = glGetUniformLocation(_program_num, "LensLeftCenter");
+    //glUniform2f(LensLCenterLoc, 0.25, 0.5);    
+    //GLuint LensRCenterLoc = glGetUniformLocation(_program_num, "LensRightCenter");
+    //glUniform2f(LensRCenterLoc, 0.75, 0.5);
+    //GLuint ScreenCenterLoc = glGetUniformLocation(_program_num, "ScreenCenter");
+    //glUniform2f(ScreenCenterLoc, 0.5, 0.5);
+    //GLuint ScaleLoc = glGetUniformLocation(_program_num, "Scale");
+    //glUniform2f(ScaleLoc, 1.0, 1.0);    
+    //GLuint ScaleInLoc = glGetUniformLocation(_program_num, "ScaleIn");
+    //glUniform2f(ScaleInLoc, 1.0/1280.0, 1.0/800.0);
+    //GLuint HmdWarpParamLoc = glGetUniformLocation(_warpShaderID,"DistortionOffset");
+    //glUniform4f(HmdWarpParamLoc, stereo_left.pDistortion->K[0], 
+    //                             stereo_left.pDistortion->K[1],
+    //                             stereo_left.pDistortion->K[2],
+    //                             stereo_left.pDistortion->K[3] );
+    //                             stereo_left.pDistortion->K[3]);
+//  tLoc =  glGetUniformLocation(_warpShaderID,"DistortionOffset");
+//  glUniform1f(tLoc,0.1453f);
+    renderFullscreenQuad();
+    //glDrawArrays(GL_POINTS, 0, 1);
+
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
+    glDisable(GL_TEXTURE_2D);
+    glBindFramebuffer(GL_FRAMEBUFFER,0);
+    //glBindVertexArray(0);
+    glUseProgram(0); 
+}
+
 void Rift::render(Vector3f EyePos, Vector3f EyeRot, void (*draw_scene)(void)){
 
     //printf("Eyepos: %f, %f, %f; Rot %f, %f, %f\n", EyePos.x, EyePos.y, EyePos.z,
@@ -310,31 +445,11 @@ void Rift::render(Vector3f EyePos, Vector3f EyeRot, void (*draw_scene)(void)){
     const StereoEyeParams& stereo_right = _SConfig.GetEyeRenderParams(StereoEye_Right);
 
     // distortion shaders, if active
-    // %TODO: make these work, including switching on/off
-    glActiveTexture(GL_TEXTURE0);
+    // Render to first framebuffer
+    glActiveTexture(0);
+    glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glUseProgram(_program_num);
-    GLuint colorloc = glGetUniformLocation(_program_num, "colorTex");
-    glUniform1i(colorloc,0); // Sets the color texture to be tex unit 0
-    // and sets the input vars so the shader knows how much to scale
-    GLuint LensLCenterLoc = glGetUniformLocation(_program_num, "LensLeftCenter");
-    glUniform2f(LensLCenterLoc, 0.25, 0.5);    
-    GLuint LensRCenterLoc = glGetUniformLocation(_program_num, "LensRightCenter");
-    glUniform2f(LensRCenterLoc, 0.75, 0.5);
-    GLuint ScreenCenterLoc = glGetUniformLocation(_program_num, "ScreenCenter");
-    glUniform2f(ScreenCenterLoc, 0.5, 0.5);
-    GLuint ScaleLoc = glGetUniformLocation(_program_num, "Scale");
-    glUniform2f(ScaleLoc, 1.0, 1.0);    
-    //GLuint ScaleInLoc = glGetUniformLocation(_program_num, "ScaleIn");
-    //glUniform2f(ScaleInLoc, 1.0/1280.0, 1.0/800.0);
-    GLuint HmdWarpParamLoc = glGetUniformLocation(_program_num, "HmdWarpParam");
-    glUniform4f(HmdWarpParamLoc, stereo_left.pDistortion->K[0], 
-                                 stereo_left.pDistortion->K[1],
-                                 stereo_left.pDistortion->K[2],
-                                 stereo_left.pDistortion->K[3] );
-    //printf("Distortion params: %f, %f, %f, %f\n", stereo_left.pDistortion->K[0], 
-    //                             stereo_left.pDistortion->K[1],
-    //                             stereo_left.pDistortion->K[2],
-    //                             stereo_left.pDistortion->K[3]);
 
     switch(_SConfig.GetStereoMode())
     {
@@ -347,6 +462,26 @@ void Rift::render(Vector3f EyePos, Vector3f EyeRot, void (*draw_scene)(void)){
         render_one_eye(stereo_right, View, EyePos, draw_scene);
         break;
     }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // Apply stereowarp, mapping it out to second framebuffer
+    stereoWarp(_fbo_spare, _render_texture);
+
+    // Draw final fbo to screen
+    glEnable(GL_TEXTURE_2D);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_DEPTH_TEST);
+    // Don't use a program.  That is, use the fixed funtion pipeline.
+    glUseProgram(0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, _render_texture_spare);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glViewport(0,0,_width,_height);
+    renderFullscreenQuad();
+    // But make sure we get back to normal afterwards.
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
+    glDisable(GL_TEXTURE_2D);
 
     glutSwapBuffers();  
 
@@ -408,9 +543,5 @@ void Rift::render_one_eye(const StereoEyeParams& stereo,
 
     // Call main renderer
     draw_scene();
-    //Scene.Render(pRender, stereo.ViewAdjust * View);
-
-    // finish up
-    //pRender->FinishScene();
 }
 

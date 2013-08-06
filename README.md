@@ -3,6 +3,13 @@ rift_cuda_demos
 
 Various experiments with the Oculus Rift SDK leveraging CUDA for fancy rendering and such.
 
+Credit for the working Rift GLSL shaders goes to Luke Groeninger:
+	https://github.com/dghost/glslRiftDistort
+
+
+This readme will be better organized in the future. As it stands, there's only
+one demo:
+
 simple_particle_swirl:
 To build: Modify the Makefile to point to the lib and include dirs of a version of the
 Rift SDK -- they'll be formatted something like what I've already got there. (Change
