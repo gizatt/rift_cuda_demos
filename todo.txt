@@ -1,5 +1,8 @@
 TODO:
 
+https://github.com/dghost/glslRiftDistort
+good source on shaders
+
 simple_particle_swirl:
 -add texture to ground, and maybe a mesh or two for scale. (start fleshing out
 the game itself now that framework is getting done, essentially)

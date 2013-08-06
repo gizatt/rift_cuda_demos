@@ -140,6 +140,17 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
     }
     _SConfig.Set2DAreaFov(DegreeToRad(85.0f));
 
+
+    // Set up distortion frag shader
+    _program_num = glCreateProgram();
+    load_shaders("../shaders/rift_vert_shader.vert", &_vshader_num, 
+                "../shaders/rift_frag_shader.frag", &_fshader_num);
+    glAttachShader(_program_num, _fshader_num);
+    glAttachShader(_program_num, _vshader_num);
+    glLinkProgram(_program_num);
+
+    glUseProgram(_program_num);
+
     QueryPerformanceCounter(&_lasttime);
 }
 
@@ -295,6 +306,36 @@ void Rift::render(Vector3f EyePos, Vector3f EyeRot, void (*draw_scene)(void)){
     // This is what transformation would be without head modeling.    
     // View = Matrix4f::LookAtRH(EyePos, EyePos + forward, up);    
 
+    const StereoEyeParams& stereo_left = _SConfig.GetEyeRenderParams(StereoEye_Left);
+    const StereoEyeParams& stereo_right = _SConfig.GetEyeRenderParams(StereoEye_Right);
+
+    // distortion shaders, if active
+    // %TODO: make these work, including switching on/off
+    glActiveTexture(GL_TEXTURE0);
+    glUseProgram(_program_num);
+    GLuint colorloc = glGetUniformLocation(_program_num, "colorTex");
+    glUniform1i(colorloc,0); // Sets the color texture to be tex unit 0
+    // and sets the input vars so the shader knows how much to scale
+    GLuint LensLCenterLoc = glGetUniformLocation(_program_num, "LensLeftCenter");
+    glUniform2f(LensLCenterLoc, 0.25, 0.5);    
+    GLuint LensRCenterLoc = glGetUniformLocation(_program_num, "LensRightCenter");
+    glUniform2f(LensRCenterLoc, 0.75, 0.5);
+    GLuint ScreenCenterLoc = glGetUniformLocation(_program_num, "ScreenCenter");
+    glUniform2f(ScreenCenterLoc, 0.5, 0.5);
+    GLuint ScaleLoc = glGetUniformLocation(_program_num, "Scale");
+    glUniform2f(ScaleLoc, 1.0, 1.0);    
+    //GLuint ScaleInLoc = glGetUniformLocation(_program_num, "ScaleIn");
+    //glUniform2f(ScaleInLoc, 1.0/1280.0, 1.0/800.0);
+    GLuint HmdWarpParamLoc = glGetUniformLocation(_program_num, "HmdWarpParam");
+    glUniform4f(HmdWarpParamLoc, stereo_left.pDistortion->K[0], 
+                                 stereo_left.pDistortion->K[1],
+                                 stereo_left.pDistortion->K[2],
+                                 stereo_left.pDistortion->K[3] );
+    //printf("Distortion params: %f, %f, %f, %f\n", stereo_left.pDistortion->K[0], 
+    //                             stereo_left.pDistortion->K[1],
+    //                             stereo_left.pDistortion->K[2],
+    //                             stereo_left.pDistortion->K[3]);
+
     switch(_SConfig.GetStereoMode())
     {
     case Stereo_None:
@@ -302,8 +343,8 @@ void Rift::render(Vector3f EyePos, Vector3f EyeRot, void (*draw_scene)(void)){
         break;
 
     case Stereo_LeftRight_Multipass:
-        render_one_eye(_SConfig.GetEyeRenderParams(StereoEye_Left), View, EyePos, draw_scene);
-        render_one_eye(_SConfig.GetEyeRenderParams(StereoEye_Right), View, EyePos, draw_scene);
+        render_one_eye(stereo_left, View, EyePos, draw_scene);
+        render_one_eye(stereo_right, View, EyePos, draw_scene);
         break;
     }
 

@@ -25,6 +25,7 @@
 #include <gl/gl.h>
 
 #include "OVR.h"
+#include "xen_utils.h"
 
 #include <windows.h>
 
@@ -87,6 +88,12 @@ namespace xen_rift {
 		    // timekeeping
 		    LARGE_INTEGER _lasttime;
 		    LARGE_INTEGER _currtime;
+
+		    // distortion shader nums
+		    GLuint _vshader_num;
+		    GLuint _fshader_num;
+		    // and its program
+		    GLuint _program_num;
 
 		    // mouselook enabled?
 		    bool _mouselook;

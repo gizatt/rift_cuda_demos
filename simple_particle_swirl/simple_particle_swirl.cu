@@ -48,17 +48,18 @@ cudaGraphicsResource *resources[1];
 float4* d_velocities;
 
 
-
+/*
 Ptr<DeviceManager> pManager;
 Ptr<HMDDevice> pHMD;
 Ptr<SensorDevice> pSensor;
 HMDInfo hmd;
 SensorFusion SFusion;
+*/
 
 //Player manager
-Player player_manager(float3(), float2(), 1.6);
+Player * player_manager;
 //Rift
-Rift rift_manager(1280, 720, true);
+Rift * rift_manager;
 
 
 /* #########################################################################
@@ -142,6 +143,12 @@ int main(int argc, char* argv[]) {
     //Go get openGL set up / get the critical glob. variables set up
     initOpenGL(1280, 720, NULL);
 
+    // get helpers set up now that opengl is up
+    float3 zeropos = float3();
+    float2 zerorot = float2();
+    player_manager = new Player(zeropos, zerorot, 1.6);
+    //Rift
+    rift_manager = new Rift(1280, 720, true);
 
     //Gotta register our callbacks
     glutIdleFunc( glut_idle );
@@ -203,7 +210,15 @@ void initOpenGL(int w, int h, void*d = NULL) {
         /* Problem: glewInit failed, something is seriously wrong. */
         fprintf(stderr, "Error: %s\n", glewGetErrorString(err));
     }
-        
+    if (glewIsSupported("GL_VERSION_3_3"))
+        ;
+    else {
+        printf("OpenGL 3.3 not supported\n");
+        exit(1);
+    }
+
+
+    // %TODO: this should talk to rift manager
     //Viewpoint setup
     glViewport(0, 0, w, h);
     glMatrixMode(GL_PROJECTION);
@@ -223,6 +238,10 @@ void initOpenGL(int w, int h, void*d = NULL) {
     //Define lighting
     light_direction = make_float3(0.5, -1.0, 0.0);
     light_direction = normalize(light_direction);
+    GLfloat tmp[3] = {light_direction.x, light_direction.y, light_direction.z};
+    glLightfv(GL_LIGHT0, GL_POSITION, tmp);
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
 
     //Clear viewport
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  
@@ -306,13 +325,13 @@ void glut_display(){
     // bring in vbo
     glBindBuffer(GL_ARRAY_BUFFER, *vbo);
     // and get player location
-    float3 curr_translation = player_manager.get_position();
-    float2 curr_rotation = player_manager.get_rotation();
+    float3 curr_translation = player_manager->get_position();
+    float2 curr_rotation = player_manager->get_rotation();
     Vector3f curr_t_vec(curr_translation.x, curr_translation.y, curr_translation.z);
     Vector3f curr_r_vec(0.0f, curr_rotation.y*M_PI/180.0, 0.0f);
 
     // Go do Rift rendering!
-    rift_manager.render(curr_t_vec, curr_r_vec, render_core);
+    rift_manager->render(curr_t_vec, curr_r_vec, render_core);
 
     /*
     //Left viewport:
@@ -381,7 +400,7 @@ void glut_display(){
     //output useful framerate and status info:
     //printf ("framerate: %3.1f / %4.1f\n", curr, currFrameRate);
     // frame was rendered, give the player handler a tick
-    player_manager.on_frame_render();
+    player_manager->on_frame_render();
 
     totalFrames++;
 }
@@ -396,6 +415,13 @@ void glut_display(){
 
    ######################################################################### */
 void draw_demo_room(){
+    const float groundColor[]     = {0.7f, 0.3f, 0.5f, 1.0f};
+    const float groundSpecular[]  = {0.8f, 0.8f, 0.8f, 1.0f};
+    const float groundShininess[] = {80.0f};
+
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, groundColor);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, groundSpecular);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, groundShininess);
     glBegin(GL_QUADS);
     /* Floor */
     glColor3f(0.7, 0.7, 0.7);
@@ -413,6 +439,14 @@ void draw_demo_room(){
 
    ######################################################################### */
 void render_core(){
+
+    const float partColor[]     = {0.9f, 0.1f, 0.1f, 1.0f};
+    const float partSpecular[]  = {0.0f, 0.0f, 0.0f, 1.0f};
+    const float partShininess[] = {0.0f};
+
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, partColor);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, partSpecular);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, partShininess);
     // render from the vbo
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
@@ -430,7 +464,7 @@ void render_core(){
     draw_demo_room();
 
     // draw in front-guide
-    player_manager.draw_HUD();
+    player_manager->draw_HUD();
 
 }
 
@@ -456,13 +490,13 @@ void glut_idle(){
     // execute the kernel
     if (framesRendered > 0) 
         d_simple_particle_swirl<<< GRID_SIZE, BLOCK_SIZE >>>(dptr, d_velocities, NUM_PARTICLES, dt,
-            player_manager.get_position(), light_direction);
+            player_manager->get_position(), light_direction);
 
     // unmap buffer object
     CUDA_SAFE_CALL(cudaGraphicsUnmapResources(1, resources, 0));
 
     // and let rift handler update
-    rift_manager.onIdle();
+    rift_manager->onIdle();
 
     framesRendered++;
     glutPostRedisplay();
@@ -478,16 +512,16 @@ void glut_idle(){
         
    ######################################################################### */    
 void normal_key_handler(unsigned char key, int x, int y) {
-    player_manager.normal_key_handler(key, x, y);
-    rift_manager.normal_key_handler(key, x, y);
+    player_manager->normal_key_handler(key, x, y);
+    rift_manager->normal_key_handler(key, x, y);
     switch (key) {
         default:
             break;
     }
 }
 void normal_key_up_handler(unsigned char key, int x, int y) {
-    player_manager.normal_key_up_handler(key, x, y);
-    rift_manager.normal_key_up_handler(key, x, y);
+    player_manager->normal_key_up_handler(key, x, y);
+    rift_manager->normal_key_up_handler(key, x, y);
     switch (key) {
         default:
             break;
@@ -504,16 +538,16 @@ void normal_key_up_handler(unsigned char key, int x, int y) {
         
    ######################################################################### */    
 void special_key_handler(int key, int x, int y){
-    player_manager.special_key_handler(key, x, y);
-    rift_manager.special_key_handler(key, x, y);
+    player_manager->special_key_handler(key, x, y);
+    rift_manager->special_key_handler(key, x, y);
     switch (key) {
         default:
             break;
     }
 }
 void special_key_up_handler(int key, int x, int y){
-    player_manager.special_key_up_handler(key, x, y);
-    rift_manager.special_key_up_handler(key, x, y);
+    player_manager->special_key_up_handler(key, x, y);
+    rift_manager->special_key_up_handler(key, x, y);
     switch (key) {
         default:
             break;
@@ -531,8 +565,8 @@ void special_key_up_handler(int key, int x, int y){
         
    ######################################################################### */    
 void mouse(int button, int state, int x, int y){
-    player_manager.mouse(button, state, x, y);
-    rift_manager.mouse(button, state, x, y);
+    player_manager->mouse(button, state, x, y);
+    rift_manager->mouse(button, state, x, y);
 }
 
 
@@ -545,8 +579,8 @@ void mouse(int button, int state, int x, int y){
         
    ######################################################################### */    
 void motion(int x, int y){
-    player_manager.motion(x, y);
-    rift_manager.motion(x, y);
+    player_manager->motion(x, y);
+    rift_manager->motion(x, y);
 }
 
 
