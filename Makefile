@@ -2,7 +2,9 @@ NVCC = nvcc
 CL = cl
 
 CFLAGS=  
-LFLAGS= -L./lib -L$(RIFTLDIR) -m32 -llibovr -lopengl32 -lUser32 -lGdi32 \
+LFLAGS= -L./lib -L$(RIFTLDIR) -Xlinker=/NODEFAULTLIB:MSVCRT -Xlinker=/NODEFAULTLIB:LIBCMT \
+	-Xlinker=/NODEFAULTLIB:MSVCRTD -Xlinker=/NODEFAULTLIB:LIBCMTD \
+	-m32 -lSOIL -lmsvcrt -lmsvcrtd -llibovr -lopengl32 -lUser32 -lGdi32 \
     -lglew32d -lcutil32d --optimize 9001 \
     -use_fast_math
 ODIR=./obj

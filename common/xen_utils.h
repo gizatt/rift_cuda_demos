@@ -36,7 +36,7 @@ namespace xen_rift {
 
     // reads file as one large string
     char *textFileRead(char *fn);
-
+    
     //render fullscreen quad
     void renderFullscreenQuad();
 }

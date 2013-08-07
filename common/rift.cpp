@@ -35,6 +35,17 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
             {
     _verbose = verbose;
 
+     // Position and look. The following apply:
+     _EyePos = Vector3f();
+    // Rotation around Y, CCW positive when looking at RHS (X,Z) plane.
+    _EyeYaw = 0.0;      
+    // Pitch. If sensor is plugged in, only read from sensor.
+    _EyePitch = 0.0;       
+    // Roll, only accessible from Sensor.
+    _EyeRoll = 0.0;        
+    // Stores previous Yaw value from to support computing delta.
+    _LastSensorYaw = 0.0;  
+
     System::Init(Log::ConfigureDefaultLog(LogMask_All));
     _pManager = *DeviceManager::Create();
 
@@ -170,9 +181,14 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
     glBindTexture(GL_TEXTURE_2D,  _render_texture);
     // Give an empty image to OpenGL ( the last "0" )
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _width, _height, 0,GL_RGB, GL_UNSIGNED_BYTE, 0);
-    // Poor filtering. Needed !
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    // texture properties
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
+                    GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, 
+                    GL_LINEAR);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
     // Set "_render_texture" as our colour attachement #0
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _render_texture, 0);
     // The depth buffer
@@ -187,9 +203,14 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
     glBindTexture(GL_TEXTURE_2D,  _render_texture_spare);
     // Give an empty image to OpenGL ( the last "0" )
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _width, _height, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
-    // Poor filtering. Needed !
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    // texture properties
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
+                    GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, 
+                    GL_LINEAR);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
     // Set "_render_texture" as our colour attachement #0
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _render_texture_spare, 0);
 
@@ -369,21 +390,6 @@ void Rift::stereoWarp(GLuint outFBO, GLuint inTexture)
     glBindFramebuffer( GL_FRAMEBUFFER, 0 );
     glActiveTexture(0);
     return;
-
-    //glBindVertexArray(_nullVAO);
-    glBindFramebuffer(GL_FRAMEBUFFER,outFBO);
-    glViewport(0,0,_width,_height);
-
-    glEnable(GL_TEXTURE_2D);
-    glDisable(GL_LIGHTING);
-    glDisable(GL_DEPTH_TEST);
-    /* bind the shader for entire screen */
-    glUseProgram(_warpShaderID);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, inTexture);
-
-    tLoc =  glGetUniformLocation(_warpShaderID,"Texture");
-    glUniform1i(tLoc,0);
     
     /* set uniforms here */
     // and sets the input vars so the shader knows how much to scale
@@ -405,15 +411,6 @@ void Rift::stereoWarp(GLuint outFBO, GLuint inTexture)
     //                             stereo_left.pDistortion->K[3]);
 //  tLoc =  glGetUniformLocation(_warpShaderID,"DistortionOffset");
 //  glUniform1f(tLoc,0.1453f);
-    renderFullscreenQuad();
-    //glDrawArrays(GL_POINTS, 0, 1);
-
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_LIGHTING);
-    glDisable(GL_TEXTURE_2D);
-    glBindFramebuffer(GL_FRAMEBUFFER,0);
-    //glBindVertexArray(0);
-    glUseProgram(0); 
 }
 
 void Rift::render(Vector3f EyePos, Vector3f EyeRot, void (*draw_scene)(void)){
@@ -449,7 +446,7 @@ void Rift::render(Vector3f EyePos, Vector3f EyeRot, void (*draw_scene)(void)){
     glActiveTexture(0);
     glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glUseProgram(_program_num);
+    glUseProgram(0);
 
     switch(_SConfig.GetStereoMode())
     {

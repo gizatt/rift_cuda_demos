@@ -21,6 +21,8 @@
 // And a helper player class
 #include "../common/player.h"
 #include "../common/rift.h"
+// handy image loading
+#include "../include/SOIL.h"
 
 // use protection guys
 using namespace std;
@@ -47,6 +49,8 @@ cudaGraphicsResource *resources[1];
 // Device buffer variables
 float4* d_velocities;
 
+// ground tex
+GLuint ground_tex;
 
 /*
 Ptr<DeviceManager> pManager;
@@ -217,6 +221,26 @@ void initOpenGL(int w, int h, void*d = NULL) {
         exit(1);
     }
 
+    // Load in ground texture
+    glEnable (GL_TEXTURE_2D);
+    ground_tex = SOIL_load_OGL_texture
+    (
+        "../resources/groundgrid.bmp",
+        SOIL_LOAD_AUTO,
+        SOIL_CREATE_NEW_ID,
+        SOIL_FLAG_MIPMAPS
+    );
+    if( 0 == ground_tex )
+    {
+        printf( "SOIL loading error: '%s'\n", SOIL_last_result() );
+    }
+    glBindTexture(GL_TEXTURE_2D, ground_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     // %TODO: this should talk to rift manager
     //Viewpoint setup
@@ -239,8 +263,17 @@ void initOpenGL(int w, int h, void*d = NULL) {
     light_direction = make_float3(0.5, -1.0, 0.0);
     light_direction = normalize(light_direction);
     GLfloat tmp[3] = {light_direction.x, light_direction.y, light_direction.z};
-    glLightfv(GL_LIGHT0, GL_POSITION, tmp);
-    glEnable(GL_LIGHTING);
+    GLfloat amb[]= { 0.1f, 0.1f, 0.1f, 1.0f };
+    GLfloat diff[]= { 0.4f, 0.4f, 0.4f, 1.0f };
+    GLfloat spec[]= { 0.8f, 0.8f, 0.8f, 1.0f };
+    GLfloat lightpos[]= { 10.0f, 10.0f, 10.0f, 1.0f };
+    glLightfv(GL_LIGHT0, GL_AMBIENT, amb);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, diff);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, spec);
+    glLightfv(GL_LIGHT0, GL_POSITION, lightpos);
+    // Turn on lighting.  You can turn it off with a similar call to
+    // glDisable().
+    glEnable(GL_LIGHTING);    
     glEnable(GL_LIGHT0);
 
     //Clear viewport
@@ -295,8 +328,7 @@ void initOpenGL(int w, int h, void*d = NULL) {
     screenX = glutGet(GLUT_WINDOW_WIDTH);
     screenY = glutGet(GLUT_WINDOW_HEIGHT);
 
-
-
+    glEnable( GL_NORMALIZE );
     glFinish();
 }
 
@@ -415,21 +447,31 @@ void glut_display(){
 
    ######################################################################### */
 void draw_demo_room(){
-    const float groundColor[]     = {0.7f, 0.3f, 0.5f, 1.0f};
-    const float groundSpecular[]  = {0.8f, 0.8f, 0.8f, 1.0f};
-    const float groundShininess[] = {80.0f};
+    const float groundColor[]     = {0.7f, 0.7f, 0.7f, 1.0f};
+    const float groundSpecular[]  = {0.1f, 0.1f, 0.1f, 1.0f};
+    const float groundShininess[] = {0.10f};
+    glEnable(GL_LIGHTING);
+    glEnable(GL_TEXTURE_2D);
+    //glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, ground_tex);
 
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, groundColor);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, groundSpecular);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, groundShininess);
+
     glBegin(GL_QUADS);
     /* Floor */
-    glColor3f(0.7, 0.7, 0.7);
+    //glColor3f(1.0, 1.0, 1.0);
+    glTexCoord2f (-10.0, -10.0);
     glVertex3f(-100.0,-0.1,-100.0);
+    glTexCoord2f (10.0, -10.0);
     glVertex3f(100.0,-0.1,-100.0);
+    glTexCoord2f (10.0, 10.0);
     glVertex3f(100.0,-0.1,100.0);
+    glTexCoord2f (-10.0, 10.0);
     glVertex3f(-100.0,-0.1,100.0);
     glEnd();
+    glDisable(GL_TEXTURE_2D);
 }
 
 /* #########################################################################
@@ -439,6 +481,9 @@ void draw_demo_room(){
 
    ######################################################################### */
 void render_core(){
+
+    glEnable(GL_LIGHTING);
+    glEnable(GL_DEPTH_TEST);
 
     const float partColor[]     = {0.9f, 0.1f, 0.1f, 1.0f};
     const float partSpecular[]  = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -460,12 +505,13 @@ void render_core(){
     glDrawArrays(GL_POINTS,0, NUM_PARTICLES);
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableClientState(GL_COLOR_ARRAY);
-
     draw_demo_room();
 
     // draw in front-guide
     player_manager->draw_HUD();
 
+    glDisable(GL_LIGHTING);
+    glDisable(GL_DEPTH_TEST);
 }
 
 /* #########################################################################

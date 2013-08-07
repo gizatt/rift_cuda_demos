@@ -1,15 +1,5 @@
-
-
-//out vec4 colorOut;
- 
-//void main()
-//{
-//    colorOut = vec4(1.0, 0.0, 0.0, 1.0);
-//}
-
-// fPassThrough.glsl
-// Pass through fragment shader.
-
+// Pass through fragment shader with texture mapping
+uniform sampler2D colorTex;
 void main()
 {
     gl_FragColor = gl_Color;

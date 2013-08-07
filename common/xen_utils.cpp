@@ -19,6 +19,7 @@ using namespace xen_rift;
 
 //--------------------------------------------------------------------------
 // Prints an info log regarding the creation of a vertex or fragment shader
+//  CS179 2013 Caltech
 //--------------------------------------------------------------------------
 void xen_rift::printShaderInfoLog(GLuint obj)
 {
@@ -122,6 +123,7 @@ char * xen_rift::textFileRead(char *fn) {
 //--------------------------------------------------------------------------
 // Runs the current shader program/texture state/render target across
 // a fullscreen quad.  Primarily useful for post-processing or GPGPU.
+//  CS179 2013 Caltech
 //--------------------------------------------------------------------------
 void xen_rift::renderFullscreenQuad()
 {
