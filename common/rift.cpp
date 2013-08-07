@@ -370,7 +370,7 @@ void Rift::stereoWarp(GLuint outFBO, GLuint inTexture)
     glBindFramebuffer( GL_FRAMEBUFFER, outFBO );
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, inTexture);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT);
 
     tLoc =  glGetUniformLocation(_warpShaderID,"Texture");
     glUniform1i(tLoc,0);
@@ -472,7 +472,7 @@ void Rift::render(Vector3f EyePos, Vector3f EyeRot, void (*draw_scene)(void)){
     glUseProgram(0);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _render_texture_spare);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT);
     glViewport(0,0,_width,_height);
     renderFullscreenQuad();
     // But make sure we get back to normal afterwards.
@@ -539,6 +539,8 @@ void Rift::render_one_eye(const StereoEyeParams& stereo,
     glLoadMatrixf(tmp);
 
     // Call main renderer
+    glPushMatrix();
     draw_scene();
+    glPopMatrix();
 }
 

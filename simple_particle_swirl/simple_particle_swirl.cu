@@ -257,7 +257,7 @@ void initOpenGL(int w, int h, void*d = NULL) {
     glDepthFunc(GL_LESS);
     glEnable(GL_DEPTH_TEST);
     glEnable (GL_BLEND);
-    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    //wglBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     //Define lighting
     light_direction = make_float3(0.5, -1.0, 0.0);
@@ -483,7 +483,6 @@ void draw_demo_room(){
 void render_core(){
 
     glEnable(GL_LIGHTING);
-    glEnable(GL_DEPTH_TEST);
 
     const float partColor[]     = {0.9f, 0.1f, 0.1f, 1.0f};
     const float partSpecular[]  = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -505,13 +504,17 @@ void render_core(){
     glDrawArrays(GL_POINTS,0, NUM_PARTICLES);
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableClientState(GL_COLOR_ARRAY);
+
+    glPushMatrix();
     draw_demo_room();
+    glPopMatrix();
 
     // draw in front-guide
+    glPushMatrix();
     player_manager->draw_HUD();
+    glPopMatrix();
 
     glDisable(GL_LIGHTING);
-    glDisable(GL_DEPTH_TEST);
 }
 
 /* #########################################################################
@@ -707,6 +710,6 @@ __global__ void d_simple_particle_swirl(float4* pos, float4* vels, unsigned int 
         tmp[12] = (unsigned char)(value);
         tmp[13] = (unsigned char)(50); 
         tmp[14] = (unsigned char)(10); 
-        tmp[15] = (unsigned char) 255;
+        tmp[15] = (unsigned char) 150;
     }
 }
