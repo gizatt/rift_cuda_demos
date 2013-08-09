@@ -413,10 +413,10 @@ void Rift::stereoWarp(GLuint outFBO, GLuint inTexture)
 //  glUniform1f(tLoc,0.1453f);
 }
 
-void Rift::render(Vector3f EyePos, Vector3f EyeRot, void (*draw_scene)(void)){
+void Rift::render(Vector3f EyePos, Vector3f EyeRot, OVR::Vector3f EyeOffset, 
+                  bool use_EyeOffset, void (*draw_scene)(void)){
 
-    //printf("Eyepos: %f, %f, %f; Rot %f, %f, %f\n", EyePos.x, EyePos.y, EyePos.z,
-    //        EyeRot.x, EyeRot.y, EyeRot.z);
+    // Eyeoffset = we have positional tracking!
 
     // Rotate and position View Camera, using YawPitchRoll in BodyFrame coordinates.
     Matrix4f rollPitchYaw = Matrix4f::RotationY(_EyeYaw+EyeRot.y) * 
@@ -433,10 +433,14 @@ void Rift::render(Vector3f EyePos, Vector3f EyeRot, void (*draw_scene)(void)){
     //printf("Shifted Eye Pos: %f, %f, %f\n", shiftedEyePos.x, shiftedEyePos.y, shiftedEyePos.z);
     shiftedEyePos.y -= eyeCenterInHeadFrame.y; // Bring the head back down to original height
 
-    Matrix4f View = Matrix4f::LookAtRH(shiftedEyePos, shiftedEyePos + forward, up); 
+    Matrix4f View;
 
-    // This is what transformation would be without head modeling.    
-    // View = Matrix4f::LookAtRH(EyePos, EyePos + forward, up);    
+    if (use_EyeOffset){
+        EyePos += EyeOffset;
+        View = Matrix4f::LookAtRH(EyePos, EyePos + forward, up); 
+    } else {
+        View = Matrix4f::LookAtRH(shiftedEyePos, shiftedEyePos + forward, up); 
+    }
 
     const StereoEyeParams& stereo_left = _SConfig.GetEyeRenderParams(StereoEye_Left);
     const StereoEyeParams& stereo_right = _SConfig.GetEyeRenderParams(StereoEye_Right);

@@ -58,7 +58,8 @@ namespace xen_rift {
 			void motion(int x, int y);
 			void onIdle( void );
 			void stereoWarp(GLuint outFBO, GLuint inTexture);
-			void render(OVR::Vector3f EyePos, OVR::Vector3f EyeRot, void (*draw_scene)(void));
+			void render(OVR::Vector3f EyePos, OVR::Vector3f EyeRot, OVR::Vector3f EyeOffset, 
+						bool use_EyeOffset, void (*draw_scene)(void));
 			void render_one_eye(const OVR::Util::Render::StereoEyeParams& stereo, 
                             OVR::Matrix4f view_mat, OVR::Vector3f EyePos, void (*draw_scene)(void));
 		protected:

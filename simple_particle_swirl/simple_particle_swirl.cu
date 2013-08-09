@@ -21,6 +21,7 @@
 // And a helper player class
 #include "../common/player.h"
 #include "../common/rift.h"
+#include "../common/hydra.h"
 // handy image loading
 #include "../include/SOIL.h"
 
@@ -64,7 +65,8 @@ SensorFusion SFusion;
 Player * player_manager;
 //Rift
 Rift * rift_manager;
-
+//Hydra
+Hydra * hydra_manager;
 
 /* #########################################################################
     
@@ -147,13 +149,6 @@ int main(int argc, char* argv[]) {
     //Go get openGL set up / get the critical glob. variables set up
     initOpenGL(1280, 720, NULL);
 
-    // get helpers set up now that opengl is up
-    float3 zeropos = float3();
-    float2 zerorot = float2();
-    player_manager = new Player(zeropos, zerorot, 1.6);
-    //Rift
-    rift_manager = new Rift(1280, 720, true);
-
     //Gotta register our callbacks
     glutIdleFunc( glut_idle );
     glutDisplayFunc( glut_display );
@@ -164,6 +159,14 @@ int main(int argc, char* argv[]) {
     glutMouseFunc(mouse);
     glutMotionFunc(motion);
     glutReshapeFunc(resize);
+
+    // get helpers set up now that opengl is up
+    float3 zeropos = float3();
+    float2 zerorot = float2();
+    player_manager = new Player(zeropos, zerorot, 1.6);
+    //Rift
+    rift_manager = new Rift(1280, 720, true);
+    hydra_manager = new Hydra();
 
     //Main loop!
     printf("done!\n");
@@ -359,11 +362,15 @@ void glut_display(){
     // and get player location
     float3 curr_translation = player_manager->get_position();
     float2 curr_rotation = player_manager->get_rotation();
+    float3 curr_offset = hydra_manager->getCurrentPos('r')*1.0/1000.0;
+    float3 curr_offset_rpy = hydra_manager->getCurrentRPY('r');
     Vector3f curr_t_vec(curr_translation.x, curr_translation.y, curr_translation.z);
-    Vector3f curr_r_vec(0.0f, curr_rotation.y*M_PI/180.0, 0.0f);
+    //Vector3f curr_r_vec(0.0f, curr_rotation.y*M_PI/180.0, 0.0f);
+    Vector3f curr_r_vec(curr_offset_rpy.y, curr_offset_rpy.x + curr_rotation.y*M_PI/180.0, curr_offset_rpy.z);
+    Vector3f curr_o_vec(curr_offset.x, curr_offset.y, curr_offset.z);
 
     // Go do Rift rendering!
-    rift_manager->render(curr_t_vec, curr_r_vec, render_core);
+    rift_manager->render(curr_t_vec, curr_r_vec, curr_o_vec, true, render_core);
 
     /*
     //Left viewport:
@@ -546,6 +553,7 @@ void glut_idle(){
 
     // and let rift handler update
     rift_manager->onIdle();
+    hydra_manager->onIdle();
 
     framesRendered++;
     glutPostRedisplay();
@@ -563,6 +571,7 @@ void glut_idle(){
 void normal_key_handler(unsigned char key, int x, int y) {
     player_manager->normal_key_handler(key, x, y);
     rift_manager->normal_key_handler(key, x, y);
+    hydra_manager->normal_key_handler(key, x, y);
     switch (key) {
         default:
             break;
@@ -571,6 +580,7 @@ void normal_key_handler(unsigned char key, int x, int y) {
 void normal_key_up_handler(unsigned char key, int x, int y) {
     player_manager->normal_key_up_handler(key, x, y);
     rift_manager->normal_key_up_handler(key, x, y);
+    hydra_manager->normal_key_up_handler(key, x, y);
     switch (key) {
         default:
             break;
@@ -589,6 +599,7 @@ void normal_key_up_handler(unsigned char key, int x, int y) {
 void special_key_handler(int key, int x, int y){
     player_manager->special_key_handler(key, x, y);
     rift_manager->special_key_handler(key, x, y);
+    hydra_manager->special_key_handler(key, x, y);
     switch (key) {
         default:
             break;
@@ -597,6 +608,7 @@ void special_key_handler(int key, int x, int y){
 void special_key_up_handler(int key, int x, int y){
     player_manager->special_key_up_handler(key, x, y);
     rift_manager->special_key_up_handler(key, x, y);
+    hydra_manager->special_key_up_handler(key, x, y);
     switch (key) {
         default:
             break;
@@ -616,6 +628,7 @@ void special_key_up_handler(int key, int x, int y){
 void mouse(int button, int state, int x, int y){
     player_manager->mouse(button, state, x, y);
     rift_manager->mouse(button, state, x, y);
+    hydra_manager->mouse(button, state, x, y);
 }
 
 
@@ -630,6 +643,7 @@ void mouse(int button, int state, int x, int y){
 void motion(int x, int y){
     player_manager->motion(x, y);
     rift_manager->motion(x, y);
+    hydra_manager->motion(x, y);
 }
 
 
