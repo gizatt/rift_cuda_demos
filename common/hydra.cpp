@@ -24,72 +24,74 @@
 using namespace std;
 using namespace xen_rift;
 
-Hydra::Hydra( bool verbose ) : _verbose(verbose),
-                               _using_hydra( true ) {
-    // sixsense init
-    int retval = sixenseInit();
-    if (retval != SIXENSE_SUCCESS){
-        printf("Couldn't initialize sixense library.\n");
-        _using_hydra = false;
-        return;
-    }
-
-    if (verbose){
-        printf("Initialializing controller manager for hydra...\n");
-    }
-    // Init the controller manager. This makes sure the controllers are present, assigned to left and right hands, and that
-    // the hemisphere calibration is complete.
-    sixenseUtils::getTheControllerManager()->setGameType( sixenseUtils::ControllerManager::ONE_PLAYER_TWO_CONTROLLER );
-    sixenseUtils::getTheControllerManager()->registerSetupCallback( controller_manager_setup_callback );
-    printf("Waiting for device setup...\n");
-    // Wait for the menu calibrations to go away... lazy man's menu, this
-    //  should be made graphical eventually
-    long long int starttime = time(NULL);
-    while(!sixenseUtils::getTheControllerManager()->isMenuVisible()){
-        // update the controller manager with the latest controller data here
-        sixenseSetActiveBase(0);
-        sixenseGetAllNewestData( &_acd );
-        sixenseUtils::getTheControllerManager()->update( &_acd );
-        long long int currtime = time(NULL);
-        if (currtime - starttime > 10){
-            printf("No hydra detected, continuing without.\n");
-            sixenseExit();
+Hydra::Hydra( bool using_hydra, bool verbose ) : _verbose(verbose),
+                               _using_hydra( using_hydra ) {
+    if (_using_hydra){
+        // sixsense init
+        int retval = sixenseInit();
+        if (retval != SIXENSE_SUCCESS){
+            printf("Couldn't initialize sixense library.\n");
             _using_hydra = false;
             return;
         }
-    }
-    while(sixenseUtils::getTheControllerManager()->isMenuVisible()){
-        // update the controller manager with the latest controller data here
-        sixenseSetActiveBase(0);
-        sixenseGetAllNewestData( &_acd );
-        sixenseUtils::getTheControllerManager()->update( &_acd );
-    }
 
-    _acd0 = _acd;
+        if (verbose){
+            printf("Initialializing controller manager for hydra...\n");
+        }
+        // Init the controller manager. This makes sure the controllers are present, assigned to left and right hands, and that
+        // the hemisphere calibration is complete.
+        sixenseUtils::getTheControllerManager()->setGameType( sixenseUtils::ControllerManager::ONE_PLAYER_TWO_CONTROLLER );
+        sixenseUtils::getTheControllerManager()->registerSetupCallback( controller_manager_setup_callback );
+        printf("Waiting for device setup...\n");
+        // Wait for the menu calibrations to go away... lazy man's menu, this
+        //  should be made graphical eventually
+        while(!sixenseUtils::getTheControllerManager()->isMenuVisible()){
+            // update the controller manager with the latest controller data here
+            sixenseSetActiveBase(0);
+            sixenseGetAllNewestData( &_acd );
+            sixenseUtils::getTheControllerManager()->update( &_acd );
+        }
+        while(sixenseUtils::getTheControllerManager()->isMenuVisible()){
+            // update the controller manager with the latest controller data here
+            sixenseSetActiveBase(0);
+            sixenseGetAllNewestData( &_acd );
+            sixenseUtils::getTheControllerManager()->update( &_acd );
+        }
+
+        _acd0 = _acd;
+    } else {
+        printf("Not using sixense library / hydra.\n");
+    }
     return;
 }
 
 void Hydra::normal_key_handler(unsigned char key, int x, int y){
-    switch (key){
-        case 'l':
-            // store calibration
-            _acd0 = _acd;
-            break;
-        default:
-            break;
+    if (_using_hydra){
+        switch (key){
+            case 'l':
+                // store calibration
+                _acd0 = _acd;
+                break;
+            default:
+                break;
+        }
     }
 }
 void Hydra::normal_key_up_handler(unsigned char key, int x, int y){
-    switch (key){
-        default:
-            break;
+    if (_using_hydra){
+        switch (key){
+            default:
+                break;
+            }
     }
 }
 
 void Hydra::special_key_handler(int key, int x, int y){
-    switch (key) {
-        default:
-            break;
+    if (_using_hydra){
+        switch (key) {
+            default:
+                break;
+            }
     }
 }
 void Hydra::special_key_up_handler(int key, int x, int y){
@@ -105,59 +107,69 @@ void Hydra::motion(int x, int y) {
 }
 
 void Hydra::onIdle() {
-    sixenseSetActiveBase(0);
-    sixenseGetAllNewestData( &_acd );
-    sixenseUtils::getTheControllerManager()->update( &_acd );
+    if (_using_hydra){
+        sixenseSetActiveBase(0);
+        sixenseGetAllNewestData( &_acd );
+        sixenseUtils::getTheControllerManager()->update( &_acd );
 
-    float3 retl = getCurrentPos('l');
-    float3 retr = getCurrentPos('r');
+        float3 retl = getCurrentPos('l');
+        float3 retr = getCurrentPos('r');
+    }
 }
 
 float3 Hydra::getCurrentPos(unsigned char which_hand) {
     int i;
-    if (which_hand == 'l'){
-        i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1L);
-    } else if (which_hand == 'r'){
-        i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1R);
+    if (_using_hydra){
+        if (which_hand == 'l'){
+            i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1L);
+        } else if (which_hand == 'r'){
+            i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1R);
+        } else {
+            printf("Hydra::getCurrentPos called with unknown which_hand arg.\n");
+            return make_float3(0.0, 0.0, 0.0);
+        }
+        sixenseMath::Vector3 currpos = sixenseMath::Vector3(_acd.controllers[i].pos);
+        sixenseMath::Vector3 origin = sixenseMath::Vector3(_acd0.controllers[i].pos);
+
+        sixenseMath::Quat currorr = sixenseMath::Quat(_acd.controllers[i].rot_quat);
+        sixenseMath::Quat orrorr = sixenseMath::Quat(_acd0.controllers[i].rot_quat);
+
+        // We want offset in frame of our new origin. So take difference between origins...
+        currpos -= origin;
+        // And rotate by origin rotation
+        currpos = orrorr.inverse()*currpos;
+
+        return make_float3(currpos[0], currpos[1], currpos[2]);
     } else {
-        printf("Hydra::getCurrentPos called with unknown which_hand arg.\n");
         return make_float3(0.0, 0.0, 0.0);
     }
-    sixenseMath::Vector3 currpos = sixenseMath::Vector3(_acd.controllers[i].pos);
-    sixenseMath::Vector3 origin = sixenseMath::Vector3(_acd0.controllers[i].pos);
-
-    sixenseMath::Quat currorr = sixenseMath::Quat(_acd.controllers[i].rot_quat);
-    sixenseMath::Quat orrorr = sixenseMath::Quat(_acd0.controllers[i].rot_quat);
-
-    // We want offset in frame of our new origin. So take difference between origins...
-    currpos -= origin;
-    // And rotate by origin rotation
-    currpos = orrorr.inverse()*currpos;
-
-    return make_float3(currpos[0], currpos[1], currpos[2]);
 }
 
 float3 Hydra::getCurrentRPY(unsigned char which_hand) {
     int i;
-    if (which_hand == 'l'){
-        i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1L);
-    } else if (which_hand == 'r'){
-        i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1R);
+    if (_using_hydra){
+        if (which_hand == 'l'){
+            i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1L);
+        } else if (which_hand == 'r'){
+            i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1R);
+        } else {
+            printf("Hydra::getCurrentPos called with unknown which_hand arg.\n");
+            return make_float3(0.0, 0.0, 0.0);
+        }
+        //sixenseMath::Vector3 currpos = sixenseMath::Vector3(_acd.controllers[i].pos);
+        //sixenseMath::Vector3 origin = sixenseMath::Vector3(_acd0.controllers[i].pos);
+
+        sixenseMath::Quat currorr = sixenseMath::Quat(_acd.controllers[i].rot_quat);
+        sixenseMath::Quat orrorr = sixenseMath::Quat(_acd0.controllers[i].rot_quat);
+
+        // We want rotation offset in our frame, which is just rotation of one quat to the other...
+        currorr = currorr * orrorr.inverse();
+
+        sixenseMath::Vector3 rpy = currorr.getEulerAngles();
+        return make_float3(rpy[0], rpy[1], rpy[2]);
     } else {
-        printf("Hydra::getCurrentPos called with unknown which_hand arg.\n");
         return make_float3(0.0, 0.0, 0.0);
     }
-    //sixenseMath::Vector3 currpos = sixenseMath::Vector3(_acd.controllers[i].pos);
-    //sixenseMath::Vector3 origin = sixenseMath::Vector3(_acd0.controllers[i].pos);
-
-    sixenseMath::Quat currorr = sixenseMath::Quat(_acd.controllers[i].rot_quat);
-    sixenseMath::Quat orrorr = sixenseMath::Quat(_acd0.controllers[i].rot_quat);
-
-    // We want rotation offset in our frame, which is just rotation of one quat to the other...
-    currorr = currorr * orrorr.inverse();
-
-    sixenseMath::Vector3 rpy = currorr.getEulerAngles();
-    return make_float3(rpy[0], rpy[1], rpy[2]);
 }
 
 // This is the callback that gets registered with the sixenseUtils::controller_manager. 

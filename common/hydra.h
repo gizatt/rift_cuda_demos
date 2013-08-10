@@ -36,7 +36,7 @@ namespace xen_rift {
 
 	class Hydra {
 		public:
-			Hydra( bool verbose = true );
+			Hydra( bool using_hydra = true, bool verbose = true );
 
 			// glut passthroughs
 			void normal_key_handler(unsigned char key, int x, int y);

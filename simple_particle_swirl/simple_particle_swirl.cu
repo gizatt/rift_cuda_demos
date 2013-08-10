@@ -116,7 +116,7 @@ __global__ void d_simple_particle_swirl( float4* pos, float4* vels, unsigned int
 int main(int argc, char* argv[]) {    
     //Deal with cmd-line args
     if (argc!=1){
-        printf("Usage: no arguments. That's it ¯\\_(ツ)_/¯\n");
+        printf("Usage: %TODO\n");
         exit(1);
     }
     
@@ -166,7 +166,7 @@ int main(int argc, char* argv[]) {
     player_manager = new Player(zeropos, zerorot, 1.6);
     //Rift
     rift_manager = new Rift(1280, 720, true);
-    hydra_manager = new Hydra();
+    hydra_manager = new Hydra(true, true);
 
     //Main loop!
     printf("done!\n");
@@ -362,15 +362,16 @@ void glut_display(){
     // and get player location
     float3 curr_translation = player_manager->get_position();
     float2 curr_rotation = player_manager->get_rotation();
+
     float3 curr_offset = hydra_manager->getCurrentPos('r')*1.0/1000.0;
     float3 curr_offset_rpy = hydra_manager->getCurrentRPY('r');
     Vector3f curr_t_vec(curr_translation.x, curr_translation.y, curr_translation.z);
-    //Vector3f curr_r_vec(0.0f, curr_rotation.y*M_PI/180.0, 0.0f);
-    Vector3f curr_r_vec(curr_offset_rpy.y, curr_offset_rpy.x + curr_rotation.y*M_PI/180.0, curr_offset_rpy.z);
+    Vector3f curr_r_vec(0.0f, curr_rotation.y*M_PI/180.0, 0.0f);
     Vector3f curr_o_vec(curr_offset.x, curr_offset.y, curr_offset.z);
+    Vector3f curr_ro_vec(curr_offset_rpy.y, curr_offset_rpy.x, curr_offset_rpy.z);
 
     // Go do Rift rendering!
-    rift_manager->render(curr_t_vec, curr_r_vec, curr_o_vec, true, render_core);
+    rift_manager->render(curr_t_vec, curr_r_vec+curr_ro_vec, curr_o_vec, true, render_core);
 
     /*
     //Left viewport:
