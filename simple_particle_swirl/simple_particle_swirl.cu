@@ -115,9 +115,22 @@ __global__ void d_simple_particle_swirl( float4* pos, float4* vels, unsigned int
    ######################################################################### */    
 int main(int argc, char* argv[]) {    
     //Deal with cmd-line args
-    if (argc!=1){
-        printf("Usage: %TODO\n");
-        exit(1);
+    //printf("argc = %d, argv[0] = %s, argv[1] = %s\n",argc, argv[0], argv[1]);
+    bool use_hydra = true;
+    bool verbose = false;
+    for (int i = 1; i < argc; i++) { //Iterate over argv[] to get the parameters stored inside.
+        if (strcmp(argv[i],"-nohydra") == 0) {
+            use_hydra = false;
+            printf("No Hydra.\n"); } 
+        else if (strcmp(argv[i],"-verbose") == 0) {
+            verbose = false;
+            printf("Verbose printouts.\n"); } 
+        else {
+            printf("Usage:\n");
+            printf("    * -nohydra | Don't wait for a Razer Hydra to show up.\n");
+            printf("    * -verbose | Verbose printouts system-wide.\n");
+            return 0;
+        }
     }
     
     printf("Initializing... ");
@@ -166,7 +179,7 @@ int main(int argc, char* argv[]) {
     player_manager = new Player(zeropos, zerorot, 1.6);
     //Rift
     rift_manager = new Rift(1280, 720, true);
-    hydra_manager = new Hydra(true, true);
+    hydra_manager = new Hydra(use_hydra, verbose);
 
     //Main loop!
     printf("done!\n");
