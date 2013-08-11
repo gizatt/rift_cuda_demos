@@ -91,9 +91,6 @@ namespace xen_rift {
 		    LARGE_INTEGER _lasttime;
 		    LARGE_INTEGER _currtime;
 
-		    // I have no idea what this is for.
-		    GLuint _nullVAO;
-
 		    // distortion shader nums
 		    GLuint _vshader_num;
 		    GLuint _fshader_num;

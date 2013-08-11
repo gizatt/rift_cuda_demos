@@ -16,6 +16,8 @@
 
    Rev history:
      Gregory Izatt  20130721  Init revision
+     Gregory Izatt  201308**  Various revisions, fleshing this out to base
+                                functionality and squashing bugs.
    ######################################################################### */    
 
 #include "rift.h"
@@ -151,10 +153,7 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
     }
     _SConfig.Set2DAreaFov(DegreeToRad(85.0f));
 
-    glGenVertexArrays(1, &_nullVAO);
-    //glBindVertexArray(_nullVAO);
-
-    // Set up our regular shaders
+    // Set up shaders (these aren't presently in use)
     _program_num = glCreateProgram();
     load_shaders("../shaders/rift_vert_shader.vert", &_vshader_num, 
                 "../shaders/rift_frag_shader.frag", &_fshader_num);
@@ -162,7 +161,7 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
     glAttachShader(_program_num, _vshader_num);
     glLinkProgram(_program_num);
 
-    // and warp shaders
+    // set up warp shaders (these are def. in use!)
     _warpShaderID = glCreateProgram();
     load_shaders("../shaders/empty.shdr", &_barrel_vert,
                 "../shaders/barrel.frag", &_barrel_frag, 
@@ -172,10 +171,11 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
     glAttachShader( _warpShaderID, _barrel_vert);
     glLinkProgram( _warpShaderID);
 
-    // And set up our rendering: render to texture
+    // And set up fbos and textures for render-to-texture steps in pipeline
+    // fbo that the regular scene render goes to:
     glGenFramebuffers(1, &_fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
-    // The texture we're going to render to
+    // its texture:
     glGenTextures(1, &_render_texture);
     // "Bind" the newly created texture : all future texture functions will modify this texture
     glBindTexture(GL_TEXTURE_2D,  _render_texture);
@@ -191,12 +191,13 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
     // Set "_render_texture" as our colour attachement #0
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _render_texture, 0);
-    // The depth buffer
-    //glGenRenderbuffers(1, &_render_depth);
-    //glBindRenderbuffer(GL_RENDERBUFFER, _render_depth);
-    //glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, _width, _height);
-    //glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _render_depth);
+    // And a depth buffer
+    glGenRenderbuffers(1, &_render_depth);
+    glBindRenderbuffer(GL_RENDERBUFFER, _render_depth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, _width, _height);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _render_depth);
 
+    // fbo that the warp render goes to:
     glGenFramebuffers(1, &_fbo_spare);
     glBindFramebuffer(GL_FRAMEBUFFER, _fbo_spare);
     glGenTextures(1, &_render_texture_spare);
