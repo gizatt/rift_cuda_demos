@@ -50,8 +50,9 @@ cudaGraphicsResource *resources[1];
 // Device buffer variables
 float4* d_velocities;
 
-// ground tex
+// ground and sky tex
 GLuint ground_tex;
+GLuint sky_tex;
 
 /*
 Ptr<DeviceManager> pManager;
@@ -251,6 +252,27 @@ void initOpenGL(int w, int h, void*d = NULL) {
         printf( "SOIL loading error: '%s'\n", SOIL_last_result() );
     }
     glBindTexture(GL_TEXTURE_2D, ground_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    // Load in sky texture
+    glEnable (GL_TEXTURE_2D);
+    sky_tex = SOIL_load_OGL_texture
+    (
+        "../resources/starskysource.png",
+        SOIL_LOAD_AUTO,
+        SOIL_CREATE_NEW_ID,
+        SOIL_FLAG_MIPMAPS
+    );
+    if( 0 == sky_tex )
+    {
+        printf( "SOIL loading error: '%s'\n", SOIL_last_result() );
+    }
+    glBindTexture(GL_TEXTURE_2D, sky_tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -480,18 +502,95 @@ void draw_demo_room(){
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, groundSpecular);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, groundShininess);
 
+    float cxl = -100.0;
+    float cxu = 100.0;
+    float cyl = -100.0;
+    float cyu = 100.0;
+    float czl = -100.0;
+    float czu = 100.0;
+
     glBegin(GL_QUADS);
     /* Floor */
     //glColor3f(1.0, 1.0, 1.0);
     glTexCoord2f (-10.0, -10.0);
-    glVertex3f(-100.0,-0.1,-100.0);
+    glVertex3f(-30.0,-0.1,-30.0);
     glTexCoord2f (10.0, -10.0);
-    glVertex3f(100.0,-0.1,-100.0);
+    glVertex3f(30.0,-0.1,-30.0);
     glTexCoord2f (10.0, 10.0);
-    glVertex3f(100.0,-0.1,100.0);
+    glVertex3f(30.0,-0.1,30.0);
     glTexCoord2f (-10.0, 10.0);
-    glVertex3f(-100.0,-0.1,100.0);
+    glVertex3f(-30.0,-0.1,30.0);
     glEnd();
+    /* Walls and ceiling; these use different parts of the star image */
+    // ceiling (+y)
+    glBindTexture(GL_TEXTURE_2D, sky_tex);
+    glBegin(GL_QUADS);
+    glTexCoord2f (1./4., 1./3.);
+    glVertex3f(cxl,cyu,czl);
+    glTexCoord2f (2./4., 1./3.);
+    glVertex3f(cxu,cyu,czl);
+    glTexCoord2f (2./4., 2./3.);
+    glVertex3f(cxu,cyu,czu);
+    glTexCoord2f (1./4., 2./3.);
+    glVertex3f(cxl,cyu,czu);
+    glEnd();
+    // floor (-y)
+    glBindTexture(GL_TEXTURE_2D, sky_tex);
+    glBegin(GL_QUADS);
+    glTexCoord2f (3./4., 1./3.);
+    glVertex3f(cxu,cyl,czl);
+    glTexCoord2f (4./4., 1./3.);
+    glVertex3f(cxl,cyl,czl);
+    glTexCoord2f (4./4., 2./3.);
+    glVertex3f(cxl,cyl,czu);
+    glTexCoord2f (3./4., 2./3.);
+    glVertex3f(cxu,cyl,czu);
+    glEnd();
+    // -x wall
+    glBegin(GL_QUADS);
+    glTexCoord2f (0./4., 1./3.);
+    glVertex3f(cxl,cyl,czl);
+    glTexCoord2f (1./4., 1./3.);
+    glVertex3f(cxl,cyu,czl);
+    glTexCoord2f (1./4., 2./3.);
+    glVertex3f(cxl,cyu,czu);
+    glTexCoord2f (0./4., 2./3.);
+    glVertex3f(cxl,cyl,czu);
+    glEnd();
+    // +x wall
+    glBegin(GL_QUADS);
+    glTexCoord2f (2./4., 1./3.);
+    glVertex3f(cxu,cyu,czl);
+    glTexCoord2f (3./4., 1./3.);
+    glVertex3f(cxu,cyl,czl);
+    glTexCoord2f (3./4., 2./3.);
+    glVertex3f(cxu,cyl,czu);
+    glTexCoord2f (2./4., 2./3.);
+    glVertex3f(cxu,cyu,czu);
+    glEnd();
+    // -z wall
+    glBegin(GL_QUADS);
+    glTexCoord2f (1./4., 0./3.);
+    glVertex3f(cxl,cyl,czl);
+    glTexCoord2f (2./4., 0./3.);
+    glVertex3f(cxl,cyu,czl);
+    glTexCoord2f (2./4., 1./3.);
+    glVertex3f(cxu,cyu,czl);
+    glTexCoord2f (1./4., 1./3.);
+    glVertex3f(cxu,cyl,czl);
+    glEnd();
+    // +z wall
+    glBegin(GL_QUADS);
+    glTexCoord2f (1./4., 2./3.);
+    glVertex3f(cxl,cyu,czu);
+    glTexCoord2f (1./4., 3./3.);
+    glVertex3f(cxl,cyl,czu);
+    glTexCoord2f (2./4., 3./3.);
+    glVertex3f(cxu,cyl,czu);
+    glTexCoord2f (2./4., 2./3.);
+    glVertex3f(cxu,cyu,czu);
+    glEnd();
+
     glDisable(GL_TEXTURE_2D);
 }
 
