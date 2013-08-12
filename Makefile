@@ -4,7 +4,6 @@ CL = cl
 CFLAGS=  
 LFLAGS= -L./lib -L$(RIFTLDIR) -Xlinker=/NODEFAULTLIB:MSVCRT -Xlinker=/NODEFAULTLIB:LIBCMT \
 	-Xlinker=/NODEFAULTLIB:MSVCRTD -Xlinker=/NODEFAULTLIB:LIBCMTD \
-	-Xlinker=/NODEFAULTLIB:MSVCP100D \
 	-m32 -lSOIL -lsixensed -lsixense_utilsd -lmsvcrt -llibovr -lopengl32 -lUser32 -lGdi32 \
     -lglew32d -lcutil32d --optimize 9001 \
     -use_fast_math
