@@ -30,9 +30,6 @@ using namespace std;
 using namespace OVR;
 using namespace xen_rift;
 
-//Global light direction
-float3 light_direction;
-
 //GLUT:
 int screenX, screenY;
 //Frame counters
@@ -78,6 +75,8 @@ Hydra * hydra_manager;
 void initOpenGL(int w, int h, void*d);
 //    GLUT display callback -- updates screen
 void glut_display();
+// Helper to set up lighting
+void draw_setup_lighting();
 // Helper to draw the skybox
 void draw_demo_skybox();
 // Helper to draw the demo room itself
@@ -103,7 +102,7 @@ double get_elapsed();
 
 // And the magnificent kernel!
 __global__ void d_simple_particle_swirl( float4* pos, float4* vels, unsigned int N, float dt,
-        float3 player_pos, float3 light_dir); 
+        float3 player_pos); 
 
 /* #########################################################################
     
@@ -273,7 +272,7 @@ void initOpenGL(int w, int h, void*d = NULL) {
     float ratio =  w * 1.0 / h;
     gluPerspective(45.0f, ratio, 0.1f, 100.0f);
     glMatrixMode(GL_MODELVIEW);
-    
+
     //And adjust point size
     glPointSize(2);
     //Enable depth-sorting of points during rendering
@@ -281,23 +280,6 @@ void initOpenGL(int w, int h, void*d = NULL) {
     glEnable(GL_DEPTH_TEST);
     glEnable (GL_BLEND);
     //wglBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    //Define lighting
-    light_direction = make_float3(0.5, -1.0, 0.0);
-    light_direction = normalize(light_direction);
-    GLfloat tmp[3] = {light_direction.x, light_direction.y, light_direction.z};
-    GLfloat amb[]= { 0.1f, 0.1f, 0.1f, 1.0f };
-    GLfloat diff[]= { 0.4f, 0.4f, 0.4f, 1.0f };
-    GLfloat spec[]= { 0.8f, 0.8f, 0.8f, 1.0f };
-    GLfloat lightpos[]= { 10.0f, 10.0f, 10.0f, 1.0f };
-    glLightfv(GL_LIGHT0, GL_AMBIENT, amb);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, diff);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, spec);
-    glLightfv(GL_LIGHT0, GL_POSITION, lightpos);
-    // Turn on lighting.  You can turn it off with a similar call to
-    // glDisable().
-    glEnable(GL_LIGHTING);    
-    glEnable(GL_LIGHT0);
 
     //Clear viewport
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  
@@ -468,6 +450,27 @@ void glut_display(){
 
 /* #########################################################################
     
+                                draw_setup_lighting
+                                            
+        -Helper to setup demo lighting each frame.
+   ######################################################################### */
+void draw_setup_lighting(){
+    //Define lighting
+    GLfloat amb[]= { 0.7f, 0.7f, 0.8f, 1.0f };
+    GLfloat diff[]= { 0.8f, 0.8f, 1.0f, 1.0f };
+    GLfloat spec[]= { 0.8f, 0.8f, 0.8f, 1.0f };
+    GLfloat lightpos[]= { 10.0f, 5.0f, 10.0f, 1.0f };
+    GLfloat linearatten[] = {0.001f};
+    glLightfv(GL_LIGHT0, GL_AMBIENT, amb);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, diff);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, spec);
+    glLightfv(GL_LIGHT0, GL_POSITION, lightpos);
+    glLightfv(GL_LIGHT0, GL_LINEAR_ATTENUATION, linearatten);
+    glEnable(GL_LIGHT0);
+}
+
+/* #########################################################################
+    
                                 draw_demo_skybox
                                             
         -Helper to draw the demo's skybox.
@@ -478,6 +481,8 @@ void glut_display(){
 void draw_demo_skybox(){
     glPushMatrix();
     glEnable(GL_TEXTURE_2D);
+    glDisable(GL_LIGHTING);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 
     float cxl = -500.0;
     float cxu = 500.0;
@@ -563,77 +568,6 @@ void draw_demo_skybox(){
     glVertex3f(cxl,cyu,czu);
     glEnd();
 
-    /*
-    // ceiling (+y)
-    glBindTexture(GL_TEXTURE_2D, sky_tex);
-    glBegin(GL_QUADS);
-    glTexCoord2f (1./4., 1./3.);
-    glVertex3f(cxl,cyu,czl);
-    glTexCoord2f (2./4., 1./3.);
-    glVertex3f(cxu,cyu,czl);
-    glTexCoord2f (2./4., 2./3.);
-    glVertex3f(cxu,cyu,czu);
-    glTexCoord2f (1./4., 2./3.);
-    glVertex3f(cxl,cyu,czu);
-    glEnd();
-    // floor (-y)
-    glBindTexture(GL_TEXTURE_2D, sky_tex);
-    glBegin(GL_QUADS);
-    glTexCoord2f (3./4., 1./3.);
-    glVertex3f(cxu,cyl,czl);
-    glTexCoord2f (4./4., 1./3.);
-    glVertex3f(cxl,cyl,czl);
-    glTexCoord2f (4./4., 2./3.);
-    glVertex3f(cxl,cyl,czu);
-    glTexCoord2f (3./4., 2./3.);
-    glVertex3f(cxu,cyl,czu);
-    glEnd();
-    // -x wall
-    glBegin(GL_QUADS);
-    glTexCoord2f (0./4., 1./3.);
-    glVertex3f(cxl,cyl,czl);
-    glTexCoord2f (1./4., 1./3.);
-    glVertex3f(cxl,cyu,czl);
-    glTexCoord2f (1./4., 2./3.);
-    glVertex3f(cxl,cyu,czu);
-    glTexCoord2f (0./4., 2./3.);
-    glVertex3f(cxl,cyl,czu);
-    glEnd();
-    // +x wall
-    glBegin(GL_QUADS);
-    glTexCoord2f (2./4., 1./3.);
-    glVertex3f(cxu,cyu,czl);
-    glTexCoord2f (3./4., 1./3.);
-    glVertex3f(cxu,cyl,czl);
-    glTexCoord2f (3./4., 2./3.);
-    glVertex3f(cxu,cyl,czu);
-    glTexCoord2f (2./4., 2./3.);
-    glVertex3f(cxu,cyu,czu);
-    glEnd();
-    // -z wall
-    glBegin(GL_QUADS);
-    glTexCoord2f (1./4., 0./3.);
-    glVertex3f(cxl,cyl,czl);
-    glTexCoord2f (2./4., 0./3.);
-    glVertex3f(cxl,cyu,czl);
-    glTexCoord2f (2./4., 1./3.);
-    glVertex3f(cxu,cyu,czl);
-    glTexCoord2f (1./4., 1./3.);
-    glVertex3f(cxu,cyl,czl);
-    glEnd();
-    // +z wall
-    glBegin(GL_QUADS);
-    glTexCoord2f (1./4., 2./3.);
-    glVertex3f(cxl,cyu,czu);
-    glTexCoord2f (1./4., 3./3.);
-    glVertex3f(cxl,cyl,czu);
-    glTexCoord2f (2./4., 3./3.);
-    glVertex3f(cxu,cyl,czu);
-    glTexCoord2f (2./4., 2./3.);
-    glVertex3f(cxu,cyu,czu);
-    glEnd();
-    */
-
     glBindTexture(GL_TEXTURE_2D, 0);
     glDisable(GL_TEXTURE_2D);
     glPopMatrix();
@@ -651,29 +585,32 @@ void draw_demo_skybox(){
 void draw_demo_room(){
     const float groundColor[]     = {0.7f, 0.7f, 0.7f, 1.0f};
     const float groundSpecular[]  = {0.1f, 0.1f, 0.1f, 1.0f};
-    const float groundShininess[] = {0.10f};
-    glEnable(GL_LIGHTING);
-    glEnable(GL_TEXTURE_2D);
-    //glActiveTexture(GL_TEXTURE0);
+    const float groundShininess[] = {0.2f};
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, ground_tex);
-
+    glEnable(GL_TEXTURE_2D);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, groundColor);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, groundSpecular);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, groundShininess);
 
-    glBegin(GL_QUADS);
-    /* Floor */
-    //glColor3f(1.0, 1.0, 1.0);
-    glTexCoord2f (-10.0, -10.0);
-    glVertex3f(-30.0,-0.1,-30.0);
-    glTexCoord2f (10.0, -10.0);
-    glVertex3f(30.0,-0.1,-30.0);
-    glTexCoord2f (10.0, 10.0);
-    glVertex3f(30.0,-0.1,30.0);
-    glTexCoord2f (-10.0, 10.0);
-    glVertex3f(-30.0,-0.1,30.0);
-    glEnd();
-
+    glEnable(GL_LIGHTING);
+    // Floor; tesselate this nicely so lighting affects it
+    for (float i=-10.; i<10.; i+=1.){
+        for (float j=-10.; j<10.; j+=1.){
+            glBegin(GL_QUADS);
+            glNormal3f(0., 1.0, 0.);
+            glTexCoord2f (-1., -1.);
+            glVertex3f(3.*i,-0.1,3.*j);
+            glTexCoord2f (1., -1.);
+            glVertex3f(3.*i+3.,-0.1,3.*j);
+            glTexCoord2f (1., 1.);
+            glVertex3f(3.*i+3.,-0.1,3.*j+3.);
+            glTexCoord2f (-1., 1.);
+            glVertex3f(3.*i,-0.1,3.*j+3.);
+            glEnd();
+        }
+    }
     glBindTexture(GL_TEXTURE_2D, 0);
     glDisable(GL_TEXTURE_2D);
 }
@@ -690,12 +627,14 @@ void render_core(){
     draw_demo_skybox();
 
     // then rest
+    draw_setup_lighting();
     glEnable(GL_LIGHTING);
 
-    const float partColor[]     = {0.9f, 0.1f, 0.1f, 1.0f};
-    const float partSpecular[]  = {0.0f, 0.0f, 0.0f, 1.0f};
-    const float partShininess[] = {0.0f};
+    const float partColor[]     = {0.4f, 0.1f, 0.3f, 1.0f};
+    const float partSpecular[]  = {0.1f, 0.1f, 0.1f, 1.0f};
+    const float partShininess[] = {0.1f};
 
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, partColor);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, partSpecular);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, partShininess);
@@ -747,7 +686,7 @@ void glut_idle(){
     // execute the kernel
     if (framesRendered > 0) 
         d_simple_particle_swirl<<< GRID_SIZE, BLOCK_SIZE >>>(dptr, d_velocities, NUM_PARTICLES, dt,
-            player_manager->get_position(), light_direction);
+            player_manager->get_position());
 
     // unmap buffer object
     CUDA_SAFE_CALL(cudaGraphicsUnmapResources(1, resources, 0));
@@ -900,7 +839,7 @@ double get_elapsed(){
         
    ######################################################################### */ 
 __global__ void d_simple_particle_swirl(float4* pos, float4* vels, unsigned int N, float dt,
-        float3 player_pos, float3 light_dir)
+        float3 player_pos)
 {
     // Indices into the VBO data.
     unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -920,7 +859,7 @@ __global__ void d_simple_particle_swirl(float4* pos, float4* vels, unsigned int 
         float3 to_our_pos = normalize(make_float3(pos[i].x - player_pos.x,
                                                   pos[i].y - player_pos.y,
                                                   pos[i].z - player_pos.z));
-        float value = dot(to_our_pos, light_dir)*100.0+150.0;
+        float value = 150;
         unsigned char * tmp = (unsigned char *)&(pos[i]);
         tmp[12] = (unsigned char)(value);
         tmp[13] = (unsigned char)(50); 

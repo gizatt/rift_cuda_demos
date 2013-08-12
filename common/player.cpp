@@ -153,15 +153,17 @@ float3 Player::get_up_dir(){
 
 void Player::draw_HUD(){
     // draw in a guide pointing the view dir of the player
+    glDisable(GL_LIGHTING);
     glBegin(GL_QUADS);
     float3 fdir = get_forward_dir();
     float3 sdir = 0.05*get_side_dir();
     float3 udir = 0.05*get_up_dir();
     float3 ppos = get_position();
-    glColor3f(1.0, 0.0, 0.0);
+    glColor3f(0.0, 0.3, 0.0);
     glVertex3f(ppos.x+fdir.x-0.5*sdir.x, ppos.y+fdir.y-0.5*udir.y, ppos.z+fdir.z-0.5*sdir.z);
     glVertex3f(ppos.x+fdir.x-0.5*sdir.x, ppos.y+fdir.y+0.5*udir.y, ppos.z+fdir.z-0.5*sdir.z);
     glVertex3f(ppos.x+fdir.x+0.5*sdir.x, ppos.y+fdir.y+0.5*udir.y, ppos.z+fdir.z+0.5*sdir.z);
     glVertex3f(ppos.x+fdir.x+0.5*sdir.x, ppos.y+fdir.y-0.5*udir.y, ppos.z+fdir.z+0.5*sdir.z);
+    glColor3f(1.0f, 1.0f, 1.0f);
     glEnd();
 }

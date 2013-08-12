@@ -28,7 +28,7 @@
 
 namespace xen_rift {
 	// Data dimensionality
-	#define NUM_PARTICLES (1024*2000)
+	#define NUM_PARTICLES (1024*250)
 	// buffer size for particle positions or velocities: 
 	#define BUFFER_SIZE (NUM_PARTICLES*sizeof(float4))
 
