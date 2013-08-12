@@ -52,7 +52,7 @@ float4* d_velocities;
 
 // ground and sky tex
 GLuint ground_tex;
-GLuint sky_tex;
+GLuint sky_tex[6];
 
 /*
 Ptr<DeviceManager> pManager;
@@ -78,6 +78,8 @@ Hydra * hydra_manager;
 void initOpenGL(int w, int h, void*d);
 //    GLUT display callback -- updates screen
 void glut_display();
+// Helper to draw the skybox
+void draw_demo_skybox();
 // Helper to draw the demo room itself
 void draw_demo_room();
 // and shared between eyes rendering core
@@ -259,26 +261,9 @@ void initOpenGL(int w, int h, void*d = NULL) {
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    // Load in sky texture
-    glEnable (GL_TEXTURE_2D);
-    sky_tex = SOIL_load_OGL_texture
-    (
-        "../resources/starskysource.png",
-        SOIL_LOAD_AUTO,
-        SOIL_CREATE_NEW_ID,
-        SOIL_FLAG_MIPMAPS
-    );
-    if( 0 == sky_tex )
-    {
-        printf( "SOIL loading error: '%s'\n", SOIL_last_result() );
-    }
-    glBindTexture(GL_TEXTURE_2D, sky_tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    // Load skybox
+    if (loadSkyBox("starsky", sky_tex))
+        exit(1);
 
     // %TODO: this should talk to rift manager
     //Viewpoint setup
@@ -374,6 +359,7 @@ void resize(int width, int height){
     glViewport(0,0,width,height);
     screenX = glutGet(GLUT_WINDOW_WIDTH);
     screenY = glutGet(GLUT_WINDOW_HEIGHT);
+    rift_manager->set_resolution(screenX, screenY);
 }
 
 
@@ -482,46 +468,102 @@ void glut_display(){
 
 /* #########################################################################
     
-                                draw_demo_room
+                                draw_demo_skybox
                                             
-        -Helper to draw demo room: basic walls, floor, environ, etc.
-            If this becomes fancy enough / dynamic I may go throw it in
-            its own file.
-
+        -Helper to draw the demo's skybox.
+        Reference to
+            http://stackoverflow.com/questions/2859722/
+            opengl-how-can-i-put-the-skybox-in-the-infinity
    ######################################################################### */
-void draw_demo_room(){
-    const float groundColor[]     = {0.7f, 0.7f, 0.7f, 1.0f};
-    const float groundSpecular[]  = {0.1f, 0.1f, 0.1f, 1.0f};
-    const float groundShininess[] = {0.10f};
-    glEnable(GL_LIGHTING);
+void draw_demo_skybox(){
+    glPushMatrix();
     glEnable(GL_TEXTURE_2D);
-    //glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, ground_tex);
 
-    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, groundColor);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, groundSpecular);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, groundShininess);
+    float cxl = -500.0;
+    float cxu = 500.0;
+    float cyl = -500.0;
+    float cyu = 500.0;
+    float czl = -500.0;
+    float czu = 500.0;
 
-    float cxl = -100.0;
-    float cxu = 100.0;
-    float cyl = -100.0;
-    float cyu = 100.0;
-    float czl = -100.0;
-    float czu = 100.0;
-
+    // ceiling (-y)
+    glBindTexture(GL_TEXTURE_2D, sky_tex[3]);
     glBegin(GL_QUADS);
-    /* Floor */
-    //glColor3f(1.0, 1.0, 1.0);
-    glTexCoord2f (-10.0, -10.0);
-    glVertex3f(-30.0,-0.1,-30.0);
-    glTexCoord2f (10.0, -10.0);
-    glVertex3f(30.0,-0.1,-30.0);
-    glTexCoord2f (10.0, 10.0);
-    glVertex3f(30.0,-0.1,30.0);
-    glTexCoord2f (-10.0, 10.0);
-    glVertex3f(-30.0,-0.1,30.0);
+    glTexCoord2f (0., 0.);
+    glVertex3f(cxl,cyl,czl);
+    glTexCoord2f (1., 0.);
+    glVertex3f(cxu,cyl,czl);
+    glTexCoord2f (1., 1.);
+    glVertex3f(cxu,cyl,czu);
+    glTexCoord2f (0., 1.);
+    glVertex3f(cxl,cyl,czu);
     glEnd();
-    /* Walls and ceiling; these use different parts of the star image */
+
+    // ceiling (+y)
+    glBindTexture(GL_TEXTURE_2D, sky_tex[2]);
+    glBegin(GL_QUADS);
+    glTexCoord2f (0., 1.);
+    glVertex3f(cxl,cyu,czl);
+    glTexCoord2f (1., 1.);
+    glVertex3f(cxu,cyu,czl);
+    glTexCoord2f (1., 0.);
+    glVertex3f(cxu,cyu,czu);
+    glTexCoord2f (0., 0.);
+    glVertex3f(cxl,cyu,czu);
+    glEnd();
+
+    // -x wall
+    glBindTexture(GL_TEXTURE_2D, sky_tex[1]);
+    glBegin(GL_QUADS);
+    glTexCoord2f (0., 0.);
+    glVertex3f(cxl,cyu,czu);
+    glTexCoord2f (1., 0.);
+    glVertex3f(cxl,cyu,czl);
+    glTexCoord2f (1., 1.);
+    glVertex3f(cxl,cyl,czl);
+    glTexCoord2f (0., 1.);
+    glVertex3f(cxl,cyl,czu);
+    glEnd();
+    
+    // +x wall
+    glBindTexture(GL_TEXTURE_2D, sky_tex[0]);
+    glBegin(GL_QUADS);
+    glTexCoord2f (0., 1.);
+    glVertex3f(cxu,cyl,czl);
+    glTexCoord2f (1., 1.);
+    glVertex3f(cxu,cyl,czu);
+    glTexCoord2f (1., 0.);
+    glVertex3f(cxu,cyu,czu);
+    glTexCoord2f (0., 0.);
+    glVertex3f(cxu,cyu,czl);
+    glEnd();
+
+    // -z wall
+    glBindTexture(GL_TEXTURE_2D, sky_tex[4]);
+    glBegin(GL_QUADS);
+    glTexCoord2f (0., 0.);
+    glVertex3f(cxl,cyu,czl);
+    glTexCoord2f (1., 0.);
+    glVertex3f(cxu,cyu,czl);
+    glTexCoord2f (1., 1.);
+    glVertex3f(cxu,cyl,czl);
+    glTexCoord2f (0., 1.);
+    glVertex3f(cxl,cyl,czl);
+    glEnd();
+    // +z wall
+    glBindTexture(GL_TEXTURE_2D, sky_tex[5]);
+    glBegin(GL_QUADS);
+    glTexCoord2f (0., 0.);
+    glVertex3f(cxu,cyu,czu);
+    glTexCoord2f (0., 1.);
+    glVertex3f(cxu,cyl,czu);
+    glTexCoord2f (1., 1.);
+    glVertex3f(cxl,cyl,czu);
+    glTexCoord2f (1., 0.);
+    glVertex3f(cxl,cyu,czu);
+    glEnd();
+
+    /*
     // ceiling (+y)
     glBindTexture(GL_TEXTURE_2D, sky_tex);
     glBegin(GL_QUADS);
@@ -590,7 +632,49 @@ void draw_demo_room(){
     glTexCoord2f (2./4., 2./3.);
     glVertex3f(cxu,cyu,czu);
     glEnd();
+    */
 
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDisable(GL_TEXTURE_2D);
+    glPopMatrix();
+}
+
+/* #########################################################################
+    
+                                draw_demo_room
+                                            
+        -Helper to draw demo room: basic walls, floor, environ, etc.
+            If this becomes fancy enough / dynamic I may go throw it in
+            its own file.
+
+   ######################################################################### */
+void draw_demo_room(){
+    const float groundColor[]     = {0.7f, 0.7f, 0.7f, 1.0f};
+    const float groundSpecular[]  = {0.1f, 0.1f, 0.1f, 1.0f};
+    const float groundShininess[] = {0.10f};
+    glEnable(GL_LIGHTING);
+    glEnable(GL_TEXTURE_2D);
+    //glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, ground_tex);
+
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, groundColor);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, groundSpecular);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, groundShininess);
+
+    glBegin(GL_QUADS);
+    /* Floor */
+    //glColor3f(1.0, 1.0, 1.0);
+    glTexCoord2f (-10.0, -10.0);
+    glVertex3f(-30.0,-0.1,-30.0);
+    glTexCoord2f (10.0, -10.0);
+    glVertex3f(30.0,-0.1,-30.0);
+    glTexCoord2f (10.0, 10.0);
+    glVertex3f(30.0,-0.1,30.0);
+    glTexCoord2f (-10.0, 10.0);
+    glVertex3f(-30.0,-0.1,30.0);
+    glEnd();
+
+    glBindTexture(GL_TEXTURE_2D, 0);
     glDisable(GL_TEXTURE_2D);
 }
 
@@ -602,6 +686,10 @@ void draw_demo_room(){
    ######################################################################### */
 void render_core(){
 
+    // first draw skybox
+    draw_demo_skybox();
+
+    // then rest
     glEnable(GL_LIGHTING);
 
     const float partColor[]     = {0.9f, 0.1f, 0.1f, 1.0f};

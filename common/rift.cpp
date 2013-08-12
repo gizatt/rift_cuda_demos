@@ -33,7 +33,8 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
             // timekeeping
             _mouselook(0),
             _mouseButtons(0),
-            _c_down(false)
+            _c_down(false),
+            _have_rift(false)
             {
     _verbose = verbose;
 
@@ -66,7 +67,7 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
         _pHMD  = *_pManager->EnumerateDevices<HMDDevice>().CreateDevice();
         if (_pHMD)
         {
-                _pSensor = *_pHMD->GetSensor();
+            _pSensor = *_pHMD->GetSensor();
 
             // This will initialize HMDInfo with information about configured IPD,
             // screen size and other variables needed for correct projection.
@@ -114,6 +115,11 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
         }
 
     } while (detectResult != PR_CONTINUE);
+
+    /* did we get a rift? */
+    if (_pHMD){
+        _have_rift = true;
+    }
 
     // If we have info on the HMD resolution, grab that.
     if (_HMDInfo.HResolution > 0)
@@ -229,6 +235,17 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
     //glUseProgram(_program_num);
 
     QueryPerformanceCounter(&_lasttime);
+}
+
+int Rift::set_resolution(int width, int height)
+{
+    if (!_have_rift){
+        _height = height;
+        _width = width;
+        return 0;
+    } else {
+        return 1;
+    }
 }
 
 
@@ -449,7 +466,9 @@ void Rift::render(Vector3f EyePos, Vector3f EyeRot, OVR::Vector3f EyeOffset,
     // distortion shaders, if active
     // Render to first framebuffer
     glActiveTexture(0);
-    glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    if (_PostProcess == PostProcess_Distortion)
+        glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glUseProgram(0);
 
@@ -467,23 +486,24 @@ void Rift::render(Vector3f EyePos, Vector3f EyeRot, OVR::Vector3f EyeOffset,
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Apply stereowarp, mapping it out to second framebuffer
-    stereoWarp(_fbo_spare, _render_texture);
-
-    // Draw final fbo to screen
-    glEnable(GL_TEXTURE_2D);
-    glDisable(GL_LIGHTING);
-    glDisable(GL_DEPTH_TEST);
-    // Don't use a program.  That is, use the fixed funtion pipeline.
-    glUseProgram(0);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, _render_texture_spare);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glViewport(0,0,_width,_height);
-    renderFullscreenQuad();
-    // But make sure we get back to normal afterwards.
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_LIGHTING);
-    glDisable(GL_TEXTURE_2D);
+    if (_PostProcess == PostProcess_Distortion){
+        stereoWarp(_fbo_spare, _render_texture);
+        // Draw final fbo to screen
+        glEnable(GL_TEXTURE_2D);
+        glDisable(GL_LIGHTING);
+        glDisable(GL_DEPTH_TEST);
+        // Don't use a program.  That is, use the fixed funtion pipeline.
+        glUseProgram(0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, _render_texture_spare);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glViewport(0,0,_width,_height);
+        renderFullscreenQuad();
+        // But make sure we get back to normal afterwards.
+        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_LIGHTING);
+        glDisable(GL_TEXTURE_2D);
+    }
 
     glutSwapBuffers();  
 

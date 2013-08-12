@@ -22,9 +22,9 @@
 #include "../include/GL/cutil_math.h"
 #include "../include/GL/glew.h"
 #include "../include/gl_helper.h"
-
 #include <gl/gl.h>
- 
+ #include "../include/SOIL.h"
+
 namespace xen_rift {
     // print log wrt a shader
     void printShaderInfoLog(GLuint obj);
@@ -39,6 +39,9 @@ namespace xen_rift {
     
     //render fullscreen quad
     void renderFullscreenQuad();
+
+    //load a skybox cubemap from a base string
+    int loadSkyBox(char * base_str, GLuint * out);
 }
 
 #endif //__XEN_UTILS_H

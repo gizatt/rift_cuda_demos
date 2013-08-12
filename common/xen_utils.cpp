@@ -164,3 +164,61 @@ void xen_rift::renderFullscreenQuad()
     // Always good practice to get back to modelview mode at all times.
     glMatrixMode(GL_MODELVIEW);
 }
+
+// Loads textures for a skybox from a given base string. Returns 0 if 
+// successful, 1 if not. Order that they come out in the array:
+//  right left top bottom front back
+static int loadSkyBoxHelper(char * tmpstring, GLuint * out){
+    *out = SOIL_load_OGL_texture
+    (
+        tmpstring,
+        SOIL_LOAD_AUTO,
+        SOIL_CREATE_NEW_ID,
+        SOIL_FLAG_MIPMAPS
+    );
+    if( 0 == *out )
+    {
+        printf( "SOIL loading error: '%s'\n", SOIL_last_result() );
+        return -1;
+    }
+    glBindTexture(GL_TEXTURE_2D, *out);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return 0;
+}
+int xen_rift::loadSkyBox(char * base_str, GLuint outs[6]){
+
+    char tmpstring[100];
+    glEnable (GL_TEXTURE_2D);
+
+    // Right
+    sprintf(tmpstring, "../resources/%s_right1.png", base_str);
+    if (loadSkyBoxHelper(tmpstring, &outs[0]))
+        return -1;
+    // Left
+    sprintf(tmpstring, "../resources/%s_left2.png", base_str);
+    if (loadSkyBoxHelper(tmpstring, &outs[1]))
+        return -1;
+    // Top
+    sprintf(tmpstring, "../resources/%s_top3.png", base_str);
+    if (loadSkyBoxHelper(tmpstring, &outs[2]))
+        return -1;
+    // Bottom
+    sprintf(tmpstring, "../resources/%s_bottom4.png", base_str);
+    if (loadSkyBoxHelper(tmpstring, &outs[3]))
+        return -1;
+    // Front
+    sprintf(tmpstring, "../resources/%s_front5.png", base_str);
+    if (loadSkyBoxHelper(tmpstring, &outs[4]))
+        return -1;
+    // Back
+    sprintf(tmpstring, "../resources/%s_back6.png", base_str);
+    if (loadSkyBoxHelper(tmpstring, &outs[5]))
+        return -1;
+
+    return 0;
+}

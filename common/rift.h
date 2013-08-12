@@ -48,6 +48,8 @@ namespace xen_rift {
 	class Rift : public OVR::MessageHandler {
 		public:
 			Rift(int inputWidth = 1280, int inputHeight = 720, bool verbose = true );
+			void get_resolution(int *width, int *height){*width=_width;*height=_height;}
+			int set_resolution(int width, int height);
 			void Rift::OnMessage(const OVR::Message& msg);
 			// glut passthroughs
 			void normal_key_handler(unsigned char key, int x, int y);
@@ -63,6 +65,7 @@ namespace xen_rift {
 			void render_one_eye(const OVR::Util::Render::StereoEyeParams& stereo, 
                             OVR::Matrix4f view_mat, OVR::Vector3f EyePos, void (*draw_scene)(void));
 		protected:
+			bool _have_rift;
 		    // *** Rendering Variables
 		    int                 _width;
 		    int 				_height;
