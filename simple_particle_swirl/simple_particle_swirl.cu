@@ -842,8 +842,8 @@ __global__ void d_simple_particle_swirl(float4* pos, float4* vels, unsigned int 
         float3 player_pos)
 {
     // Indices into the VBO data.
-    unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
-    if (i < N) {
+    unsigned long int i = blockIdx.x*blockDim.x + threadIdx.x;
+    if (0 <= i && i < N) {
         /* Update vels to orbit <0, 3, 0> */
         float dist2 = pos[i].x*pos[i].x + pos[i].y*pos[i].y + pos[i].z*pos[i].z;
         if (dist2 != 0){
