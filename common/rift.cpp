@@ -100,7 +100,7 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
 
         if (detectionMessage)
         {
-            cout << "detectionMessage" << endl;
+            cout << detectionMessage << endl;
             cout << "Enter 'r' to retry, 'c' to continue, and anything else to abort:" << endl;
             string input;
             getline(cin, input);
@@ -112,6 +112,8 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
 
             if (detectResult== PR_ABORT)
                 exit(1);
+        } else {
+            detectResult = PR_CONTINUE;
         }
 
     } while (detectResult != PR_CONTINUE);
