@@ -18,8 +18,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
-#include <vector_types.h>
-#include "../include/GL/cutil_math.h"
 #include "../include/GL/glew.h"
 #include "../include/gl_helper.h"
 #include <gl/gl.h>

@@ -16,12 +16,13 @@
 #include "player.h"
 using namespace std;
 using namespace xen_rift;
+using namespace Eigen;
 
-Player::Player(float3 init_position, float2 init_rotation, float init_eye_height) {
+Player::Player(Vector3f init_position, Vector2f init_rotation, float init_eye_height) {
   _position = init_position;
   _rotation = init_rotation;
   _eye_height = init_eye_height;
-  _position.y = init_eye_height;
+  _position.y() = init_eye_height;
   _mouseButtons = 0;
   _w_down = false;
   _s_down = false;
@@ -32,8 +33,8 @@ Player::Player(float3 init_position, float2 init_rotation, float init_eye_height
  
 void Player::on_frame_render(){
     
-	float3 forward_dir = 0.1*get_forward_dir();
-	float3 side_dir = 0.1*get_side_dir();
+	Vector3f forward_dir = 0.1*get_forward_dir();
+	Vector3f side_dir = 0.1*get_side_dir();
 
     if (_w_down){
     	_position += forward_dir;
@@ -127,12 +128,12 @@ void Player::motion(int x, int y){
     if (_c_down == false){
         if (_mouseButtons == 1) {
             //_rotation.x += dy * 0.2f;
-            _rotation.y -= dx * 0.2f;
+            _rotation.y() -= dx * 0.2f;
         } else if (_mouseButtons == 2) {
-            _position.x += dx * 0.01f;
-            _position.y -= dy * 0.01f;        
+            _position.x() += dx * 0.01f;
+            _position.y() -= dy * 0.01f;        
         } else if (_mouseButtons == 4) {
-            _position.z += dy * 0.01f;
+            _position.z() += dy * 0.01f;
         }
     }
     _mouseOldX = x;
@@ -140,30 +141,30 @@ void Player::motion(int x, int y){
 }
 
 // empirically derived negatives...
-float3 Player::get_forward_dir(){
-    return -make_float3(-sinf(-_rotation.y*M_PI/180.0), 0, cosf(-_rotation.y*M_PI/180.0));
+Vector3f Player::get_forward_dir(){
+    return -Vector3f(-sinf(-_rotation.y()*M_PI/180.0), 0, cosf(-_rotation.y()*M_PI/180.0));
 }
-float3 Player::get_side_dir(){
-    return -make_float3(cosf(-_rotation.y*M_PI/180.0), 0, sinf(-_rotation.y*M_PI/180.0));
+Vector3f Player::get_side_dir(){
+    return -Vector3f(cosf(-_rotation.y()*M_PI/180.0), 0, sinf(-_rotation.y()*M_PI/180.0));
 }
-float3 Player::get_up_dir(){
+Vector3f Player::get_up_dir(){
     // always oriented flat, so this is trivial
-    return make_float3(0, 1.0, 0.0);
+    return Vector3f(0, 1.0, 0.0);
 }
 
 void Player::draw_HUD(){
     // draw in a guide pointing the view dir of the player
     glDisable(GL_LIGHTING);
     glBegin(GL_QUADS);
-    float3 fdir = get_forward_dir();
-    float3 sdir = 0.05*get_side_dir();
-    float3 udir = 0.05*get_up_dir();
-    float3 ppos = get_position();
+    Vector3f fdir = get_forward_dir();
+    Vector3f sdir = 0.05*get_side_dir();
+    Vector3f udir = 0.05*get_up_dir();
+    Vector3f ppos = get_position();
     glColor3f(0.0, 0.3, 0.0);
-    glVertex3f(ppos.x+fdir.x-0.5*sdir.x, ppos.y+fdir.y-0.5*udir.y, ppos.z+fdir.z-0.5*sdir.z);
-    glVertex3f(ppos.x+fdir.x-0.5*sdir.x, ppos.y+fdir.y+0.5*udir.y, ppos.z+fdir.z-0.5*sdir.z);
-    glVertex3f(ppos.x+fdir.x+0.5*sdir.x, ppos.y+fdir.y+0.5*udir.y, ppos.z+fdir.z+0.5*sdir.z);
-    glVertex3f(ppos.x+fdir.x+0.5*sdir.x, ppos.y+fdir.y-0.5*udir.y, ppos.z+fdir.z+0.5*sdir.z);
+    glVertex3f(ppos.x()+fdir.x()-0.5*sdir.x(), ppos.y()+fdir.y()-0.5*udir.y(), ppos.z()+fdir.z()-0.5*sdir.z());
+    glVertex3f(ppos.x()+fdir.x()-0.5*sdir.x(), ppos.y()+fdir.y()+0.5*udir.y(), ppos.z()+fdir.z()-0.5*sdir.z());
+    glVertex3f(ppos.x()+fdir.x()+0.5*sdir.x(), ppos.y()+fdir.y()+0.5*udir.y(), ppos.z()+fdir.z()+0.5*sdir.z());
+    glVertex3f(ppos.x()+fdir.x()+0.5*sdir.x(), ppos.y()+fdir.y()-0.5*udir.y(), ppos.z()+fdir.z()+0.5*sdir.z());
     glColor3f(1.0f, 1.0f, 1.0f);
     glEnd();
 }

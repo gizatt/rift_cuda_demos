@@ -18,8 +18,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
-#include <vector_types.h>
-#include "../include/GL/cutil_math.h"
 #include "../include/GL/glew.h"
 #include "../include/gl_helper.h"
 #include <gl/gl.h>
@@ -32,6 +30,9 @@
 #include "sixense.h"
 #include "sixense_utils\controller_manager\controller_manager.hpp"
 
+#include "Eigen/Dense"
+#include "Eigen/Geometry"
+     
 namespace xen_rift {
 
 	class Hydra {
@@ -46,8 +47,8 @@ namespace xen_rift {
 			void mouse(int button, int state, int x, int y);
 			void motion(int x, int y);
 			void onIdle( void );
-			float3 getCurrentPos(unsigned char hand);
-			float3 getCurrentRPY(unsigned char hand);
+			Eigen::Vector3f getCurrentPos(unsigned char hand);
+			Eigen::Vector3f getCurrentRPY(unsigned char hand);
 
 		protected:
 			bool _verbose;

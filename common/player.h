@@ -17,17 +17,18 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
-#include <vector_types.h>
-#include "../include/GL/cutil_math.h"
 #include "../include/GL/glew.h"
 #include "../include/gl_helper.h"
 
 #include <gl/gl.h>
 
+#include "Eigen/Dense"
+#include "Eigen/Geometry"
+
 namespace xen_rift {
 	class Player {
 		public:
-			Player(float3, float2, float);
+			Player(Eigen::Vector3f, Eigen::Vector2f, float);
 			void on_frame_render();
 			void normal_key_handler(unsigned char key, int x, int y);
 			void normal_key_up_handler(unsigned char key, int x, int y);
@@ -35,16 +36,16 @@ namespace xen_rift {
 			void special_key_up_handler(int key, int x, int y);
 			void mouse(int button, int state, int x, int y);
 			void motion(int x, int y);
-			float3 get_position() { return _position; }
-			float2 get_rotation() { return _rotation; }
-			float3 get_forward_dir();
-			float3 get_side_dir();
-			float3 get_up_dir();
+			Eigen::Vector3f get_position() { return _position; }
+			Eigen::Vector2f get_rotation() { return _rotation; }
+			Eigen::Vector3f get_forward_dir();
+			Eigen::Vector3f get_side_dir();
+			Eigen::Vector3f get_up_dir();
 			void draw_HUD();
 			
 		protected:
-			float3 _position;
-			float2 _rotation;
+			Eigen::Vector3f _position;
+			Eigen::Vector2f _rotation;
 			float _eye_height;
 			int _mouseOldX;
 			int _mouseOldY;

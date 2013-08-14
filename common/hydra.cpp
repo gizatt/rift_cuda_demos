@@ -23,6 +23,7 @@
 #include "hydra.h"
 using namespace std;
 using namespace xen_rift;
+using namespace Eigen;
 
 Hydra::Hydra( bool using_hydra, bool verbose ) : _verbose(verbose),
                                _using_hydra( using_hydra ) {
@@ -112,12 +113,12 @@ void Hydra::onIdle() {
         sixenseGetAllNewestData( &_acd );
         sixenseUtils::getTheControllerManager()->update( &_acd );
 
-        float3 retl = getCurrentPos('l');
-        float3 retr = getCurrentPos('r');
+        Vector3f retl = getCurrentPos('l');
+        Vector3f retr = getCurrentPos('r');
     }
 }
 
-float3 Hydra::getCurrentPos(unsigned char which_hand) {
+Vector3f Hydra::getCurrentPos(unsigned char which_hand) {
     int i;
     if (_using_hydra){
         if (which_hand == 'l'){
@@ -126,7 +127,7 @@ float3 Hydra::getCurrentPos(unsigned char which_hand) {
             i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1R);
         } else {
             printf("Hydra::getCurrentPos called with unknown which_hand arg.\n");
-            return make_float3(0.0, 0.0, 0.0);
+            return Vector3f(0.0, 0.0, 0.0);
         }
         sixenseMath::Vector3 currpos = sixenseMath::Vector3(_acd.controllers[i].pos);
         sixenseMath::Vector3 origin = sixenseMath::Vector3(_acd0.controllers[i].pos);
@@ -139,13 +140,13 @@ float3 Hydra::getCurrentPos(unsigned char which_hand) {
         // And rotate by origin rotation
         currpos = orrorr.inverse()*currpos;
 
-        return make_float3(currpos[0], currpos[1], currpos[2]);
+        return Vector3f(currpos[0], currpos[1], currpos[2]);
     } else {
-        return make_float3(0.0, 0.0, 0.0);
+        return Vector3f(0.0, 0.0, 0.0);
     }
 }
 
-float3 Hydra::getCurrentRPY(unsigned char which_hand) {
+Vector3f Hydra::getCurrentRPY(unsigned char which_hand) {
     int i;
     if (_using_hydra){
         if (which_hand == 'l'){
@@ -154,7 +155,7 @@ float3 Hydra::getCurrentRPY(unsigned char which_hand) {
             i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1R);
         } else {
             printf("Hydra::getCurrentPos called with unknown which_hand arg.\n");
-            return make_float3(0.0, 0.0, 0.0);
+            return Vector3f(0.0, 0.0, 0.0);
         }
         //sixenseMath::Vector3 currpos = sixenseMath::Vector3(_acd.controllers[i].pos);
         //sixenseMath::Vector3 origin = sixenseMath::Vector3(_acd0.controllers[i].pos);
@@ -166,9 +167,9 @@ float3 Hydra::getCurrentRPY(unsigned char which_hand) {
         currorr = currorr * orrorr.inverse();
 
         sixenseMath::Vector3 rpy = currorr.getEulerAngles();
-        return make_float3(rpy[0], rpy[1], rpy[2]);
+        return Vector3f(rpy[0], rpy[1], rpy[2]);
     } else {
-        return make_float3(0.0, 0.0, 0.0);
+        return Vector3f(0.0, 0.0, 0.0);
     }
 }
 
