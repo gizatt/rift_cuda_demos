@@ -34,6 +34,7 @@ NVCC_LFLAGS= -L./lib -Xlinker=/NODEFAULTLIB:MSVCRT -Xlinker=/NODEFAULTLIB:LIBCMT
     -lglew32d -lcutil32d --optimize 9001 \
     -use_fast_math
 
+all: simple_particle_swirl.exe
 
 simple_particle_swirl.exe: player.obj rift.obj hydra.obj xen_utils.obj \
 	simple_particle_swirl_cu.obj \
@@ -45,28 +46,37 @@ simple_particle_swirl.exe: player.obj rift.obj hydra.obj xen_utils.obj \
 		$(ODIR)/hydra.obj $(ODIR)/textbox_3d.obj \
 		$(ODIR)/xen_utils.obj $(ODIR)/simple_particle_swirl_cu.obj 
 
-simple_particle_swirl_cu.obj: simple_particle_swirl/simple_particle_swirl.cu \
+# Compile *.obj file as from obj directory
+%.obj: $(ODIR)/%.obj
+	echo "Extending object name..."
+
+$(ODIR)/simple_particle_swirl_cu.obj: simple_particle_swirl/simple_particle_swirl.cu \
 		simple_particle_swirl/simple_particle_swirl_cu.h
 	vcvars32
 	$(NVCC) $(NVCC_CFLAGS) $(NVCC_LFLAGS) -I$(RIFTIDIR),$(HYDRAIDIR) \
-        -c simple_particle_swirl/simple_particle_swirl.cu -o ./obj/$@
+        -c simple_particle_swirl/simple_particle_swirl.cu -o $@
 
-player.obj: textbox_3d.obj common/player.cpp common/player.h
+$(ODIR)/player.obj: textbox_3d.obj common/player.cpp common/player.h
 	vcvars32
-	$(CL) /c common/player.cpp $(CFLAGS) /Fo$(ODIR)/$@ $(LFLAGS) $(ODIR)/xen_utils.obj
+	$(CL) /c common/player.cpp $(CFLAGS) /Fo$@ $(LFLAGS) /xen_utils.obj
 
-rift.obj: xen_utils.obj common/rift.cpp common/rift.h
+$(ODIR)/rift.obj: xen_utils.obj common/rift.cpp common/rift.h
 	vcvars32
-	$(CL) /c common/rift.cpp $(CFLAGS) /Fo$(ODIR)/$@ $(LFLAGS) $(ODIR)/xen_utils.obj
+	$(CL) /c common/rift.cpp $(CFLAGS) /Fo$@ $(LFLAGS) /xen_utils.obj
 
-hydra.obj: xen_utils.obj common/hydra.cpp common/hydra.h
+$(ODIR)/hydra.obj: xen_utils.obj common/hydra.cpp common/hydra.h
 	vcvars32
-	$(CL) /c common/hydra.cpp $(CFLAGS) /Fo$(ODIR)/$@ $(LFLAGS) $(ODIR)/xen_utils.obj 
+	$(CL) /c common/hydra.cpp $(CFLAGS) /Fo$@ $(LFLAGS) /xen_utils.obj 
 
-textbox_3d.obj: xen_utils.obj common/textbox_3d.cpp common/textbox_3d.h
+$(ODIR)/textbox_3d.obj: xen_utils.obj common/textbox_3d.cpp common/textbox_3d.h
 	vcvars32
-	$(CL) /c common/textbox_3d.cpp $(CFLAGS) /Fo$(ODIR)/$@ $(LFLAGS)
+	$(CL) /c common/textbox_3d.cpp $(CFLAGS) /Fo$@ $(LFLAGS)
 
-xen_utils.obj: common/xen_utils.cpp common/xen_utils.h
+$(ODIR)/xen_utils.obj: common/xen_utils.cpp common/xen_utils.h
 	vcvars32
-	$(CL) /c common/xen_utils.cpp $(CFLAGS) /Fo$(ODIR)/$@ $(LFLAGS)
+	$(CL) /c common/xen_utils.cpp $(CFLAGS) /Fo$@ $(LFLAGS)
+
+# Clean & Debug
+.PHONY: clean
+clean:
+	rm -f $(ODIR)/* $(BDIR)/*.exe

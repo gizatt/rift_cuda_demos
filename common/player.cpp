@@ -161,6 +161,7 @@ void Player::draw_HUD(){
     Vector3f udir = 0.05*get_up_dir();
     Vector3f ppos = get_position();
     glColor3f(0.0, 0.3, 0.0);
+    glNormal3f(-fdir.x(), -fdir.y(), -fdir.z());
     glVertex3f(ppos.x()+fdir.x()-0.5*sdir.x(), ppos.y()+fdir.y()-0.5*udir.y(), ppos.z()+fdir.z()-0.5*sdir.z());
     glVertex3f(ppos.x()+fdir.x()-0.5*sdir.x(), ppos.y()+fdir.y()+0.5*udir.y(), ppos.z()+fdir.z()-0.5*sdir.z());
     glVertex3f(ppos.x()+fdir.x()+0.5*sdir.x(), ppos.y()+fdir.y()+0.5*udir.y(), ppos.z()+fdir.z()+0.5*sdir.z());

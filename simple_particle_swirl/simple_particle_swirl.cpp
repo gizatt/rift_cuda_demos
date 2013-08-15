@@ -355,18 +355,19 @@ void glut_display(){
         -Helper to setup demo lighting each frame.
    ######################################################################### */
 void draw_setup_lighting(){
+    glDisable(GL_LIGHT0);
     //Define lighting
     GLfloat amb[]= { 0.7f, 0.7f, 0.8f, 1.0f };
     GLfloat diff[]= { 0.8f, 0.8f, 1.0f, 1.0f };
-    GLfloat spec[]= { 0.8f, 0.8f, 0.8f, 1.0f };
+    GLfloat spec[]= { 0.1f, 0.1f, 0.1f, 1.0f };
     GLfloat lightpos[]= { 10.0f, 5.0f, 10.0f, 1.0f };
     GLfloat linearatten[] = {0.001f};
-    glLightfv(GL_LIGHT0, GL_AMBIENT, amb);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, diff);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, spec);
-    glLightfv(GL_LIGHT0, GL_POSITION, lightpos);
-    glLightfv(GL_LIGHT0, GL_LINEAR_ATTENUATION, linearatten);
-    glEnable(GL_LIGHT0);
+    glLightfv(GL_LIGHT1, GL_AMBIENT, amb);
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, diff);
+    glLightfv(GL_LIGHT1, GL_SPECULAR, spec);
+    glLightfv(GL_LIGHT1, GL_POSITION, lightpos);
+    glLightfv(GL_LIGHT1, GL_LINEAR_ATTENUATION, linearatten);
+    glEnable(GL_LIGHT1);
 }
 
 /* #########################################################################
@@ -562,6 +563,8 @@ void render_core(){
     glPopMatrix();
 
     // and menu
+    Eigen::Vector3f tmp = player_manager->get_position()+2.*player_manager->get_forward_dir();
+    test_textbox.set_pos(tmp);
     test_textbox.draw();
 
     glDisable(GL_LIGHTING);
