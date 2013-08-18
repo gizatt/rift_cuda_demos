@@ -26,6 +26,7 @@
 #include "../common/player.h"
 #include "../common/rift.h"
 #include "../common/hydra.h"
+#include "../common/ironman_hud.h"
 
 // handy image loading
 #include "../include/SOIL.h"
@@ -69,10 +70,8 @@ Player * player_manager;
 Rift * rift_manager;
 //Hydra
 Hydra * hydra_manager;
-
-// debug
-Textbox_3D test_textbox(std::string("Hello!"), Eigen::Vector3f(0.0f, 1.0f, 0.0f), Eigen::Vector3f(0.0f, 0.0f, 1.0f), 
-                        1.0f, 0.8f, 0.2f);
+// HUD
+Ironman_HUD * hud_manager;
 
 /* #########################################################################
     
@@ -187,13 +186,19 @@ int main(int argc, char* argv[]) {
     glutReshapeFunc(resize);
 
     // get helpers set up now that opengl is up
-    Eigen::Vector3f zeropos = Eigen::Vector3f();
-    Eigen::Vector2f zerorot = Eigen::Vector2f();
+    Eigen::Vector3f zeropos = Eigen::Vector3f(0.0, 0.0, 0.0);
+    Eigen::Vector2f zerorot = Eigen::Vector2f(0.0, 0.0);
     player_manager = new Player(zeropos, zerorot, 1.6);
     //Rift
     rift_manager = new Rift(1280, 720, true);
     hydra_manager = new Hydra(use_hydra, verbose);
-
+    hud_manager = new Ironman_HUD();
+    hud_manager->add_textbox(std::string("P_Left!"), Eigen::Vector3f(-0.3f, -0.3f, -0.2f), 
+                        Eigen::Quaternionf(Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitX())),0.2f, 0.2f, 0.05f, 3.0);
+    hud_manager->add_textbox(std::string("P_Right!"), Eigen::Vector3f(0.3f, -0.3f, -0.2f), 
+                        Eigen::Quaternionf(Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitX())), 0.2f, 0.2f, 0.05f, 3.0);
+    hud_manager->add_textbox(std::string("Hello!"), Eigen::Vector3f(0.0f, -0.3f, -0.2f), 
+                        Eigen::Quaternionf(Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitX())), 0.4f, 0.2f, 0.05f, 3.0);
     //Main loop!
     printf("done!\n");
     glutMainLoop();
@@ -273,7 +278,7 @@ void initOpenGL(int w, int h, void*d = NULL) {
     //And adjust point size
     glPointSize(2);
     //Enable depth-sorting of points during rendering
-    glDepthFunc(GL_LESS);
+    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
     glEnable (GL_BLEND);
     //wglBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -559,13 +564,13 @@ void render_core(){
 
     // draw in front-guide
     glPushMatrix();
-    player_manager->draw_HUD();
+    //player_manager->draw_HUD();
     glPopMatrix();
 
     // and menu
-    Eigen::Vector3f tmp = player_manager->get_position()+2.*player_manager->get_forward_dir();
-    test_textbox.set_pos(tmp);
-    test_textbox.draw();
+    glPushMatrix();
+    hud_manager->draw(player_manager->get_position(), player_manager->get_quaternion());
+    glPopMatrix();
 
     glDisable(GL_LIGHTING);
 }

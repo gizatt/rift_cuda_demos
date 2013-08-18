@@ -41,8 +41,10 @@ namespace xen_rift {
 			Eigen::Vector3f get_forward_dir();
 			Eigen::Vector3f get_side_dir();
 			Eigen::Vector3f get_up_dir();
+			Eigen::Quaternionf get_quaternion();
 			void draw_HUD();
 			
+			EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 		protected:
 			Eigen::Vector3f _position;
 			Eigen::Vector2f _rotation;

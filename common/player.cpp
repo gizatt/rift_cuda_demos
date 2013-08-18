@@ -152,6 +152,10 @@ Vector3f Player::get_up_dir(){
     return Vector3f(0, 1.0, 0.0);
 }
 
+Quaternionf Player::get_quaternion(){
+    return Quaternionf(AngleAxisf(_rotation.y()*M_PI/180.0f, Vector3f::UnitY()));
+}
+
 void Player::draw_HUD(){
     // draw in a guide pointing the view dir of the player
     glDisable(GL_LIGHTING);

@@ -28,20 +28,25 @@ namespace xen_rift {
 	class Textbox_3D {
 		public:
 			Textbox_3D(std::string& text, Eigen::Vector3f& initpos, Eigen::Vector3f& initfacedir, 
-				float width = 0.3, float height=0.2, float depth=0.05);
+				float width = 0.3, float height=0.2, float depth=0.05, float line_width = 1.0f);
 			Textbox_3D(std::string& text, Eigen::Vector3f& initpos, Eigen::Quaternionf& initquat, 
-				float width = 0.3, float height=0.2, float depth=0.05);
+				float width = 0.3, float height=0.2, float depth=0.05, float line_width = 1.0f);
 			void set_pos( Eigen::Vector3f& newpos );
-			void draw( void );
+			void set_facedir( Eigen::Vector3f& newfacedir );
+			void draw( Eigen::Vector3f& up_dir );
 		
+		  	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 		protected:
 			// This is the dead center of the box
 			Eigen::Vector3f _pos;
 			Eigen::Quaternionf _rot;
+			// no roll; assume text gets rendered rightside up wrt current camera roll
 			float _depth;
 			float _width;
 			float _height;
 			std::string _text;
+			// line width for text
+			GLfloat _line_width;
 		private:
 	};
 };
