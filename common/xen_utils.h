@@ -22,8 +22,15 @@
 #include "../include/gl_helper.h"
 #include <gl/gl.h>
  #include "../include/SOIL.h"
+//Windows
+#include <windows.h>
 
 namespace xen_rift {
+
+    #define NUM_GET_ELAPSED_INDICES 100
+    int init_get_elapsed( void );
+    unsigned long get_elapsed(int index);
+
     // print log wrt a shader
     void printShaderInfoLog(GLuint obj);
 

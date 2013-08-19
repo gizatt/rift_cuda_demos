@@ -17,6 +17,37 @@
 using namespace std;
 using namespace xen_rift;
 
+// Returns elapsed time in ms since last call to this function with the
+//  given index, or 0 if this is the first time that index has been used
+//  or if the index is out of range.
+unsigned long lastTicks_elapsed[NUM_GET_ELAPSED_INDICES] = {};
+unsigned long perfFreq;
+int xen_rift::init_get_elapsed(){
+    //Set up timer
+    LARGE_INTEGER li;
+    if(!QueryPerformanceFrequency(&li)){
+        printf("QueryPerformanceFrequency failed!\n");
+        return -1;
+    }
+    perfFreq = (unsigned long)(li.QuadPart);
+    return 0;
+}
+unsigned long xen_rift::get_elapsed(int index){
+    if (index < 0 || index >= NUM_GET_ELAPSED_INDICES){
+        return 0;
+    }
+    LARGE_INTEGER li;
+    QueryPerformanceCounter(&li);
+    unsigned long currTicks = (unsigned long)(li.QuadPart);
+    if (lastTicks_elapsed[index] == 0){
+        lastTicks_elapsed[index] = currTicks;
+        return 0;
+    }
+    double elapsed = (((double)(currTicks - lastTicks_elapsed[index]))/((double)perfFreq))*1000;
+    lastTicks_elapsed[index] = currTicks;
+    return elapsed;
+}
+
 //--------------------------------------------------------------------------
 // Prints an info log regarding the creation of a vertex or fragment shader
 //  CS179 2013 Caltech

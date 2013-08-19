@@ -28,8 +28,8 @@
 namespace xen_rift {
 	class Player {
 		public:
-			Player(Eigen::Vector3f, Eigen::Vector2f, float);
-			void on_frame_render();
+			Player(Eigen::Vector3f, Eigen::Vector2f, float, float fspeed, float sspeed, float acc, float decay);
+			void onIdle(float dt);
 			void normal_key_handler(unsigned char key, int x, int y);
 			void normal_key_up_handler(unsigned char key, int x, int y);
 			void special_key_handler(int key, int x, int y);
@@ -47,6 +47,7 @@ namespace xen_rift {
 			EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 		protected:
 			Eigen::Vector3f _position;
+			Eigen::Vector3f _velocity;
 			Eigen::Vector2f _rotation;
 			float _eye_height;
 			int _mouseOldX;
@@ -57,6 +58,11 @@ namespace xen_rift {
 			bool _s_down;
 			bool _d_down;
 			bool _c_down;
+
+			float _fspeed;
+			float _sspeed;
+			float _acc;
+			float _decay;
 		private:
 	};
 };

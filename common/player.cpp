@@ -18,9 +18,11 @@ using namespace std;
 using namespace xen_rift;
 using namespace Eigen;
 
-Player::Player(Vector3f init_position, Vector2f init_rotation, float init_eye_height) {
+Player::Player(Vector3f init_position, Vector2f init_rotation, float init_eye_height,
+        float fspeed, float sspeed, float acc, float decay) {
   _position = init_position;
   _rotation = init_rotation;
+  _velocity = Vector3f(0.0, 0.0, 0.0);
   _eye_height = init_eye_height;
   _position.y() = init_eye_height;
   _mouseButtons = 0;
@@ -29,25 +31,32 @@ Player::Player(Vector3f init_position, Vector2f init_rotation, float init_eye_he
   _a_down = false;
   _d_down = false;
   _c_down = false;
+  _fspeed = fspeed;
+  _sspeed = sspeed;
+  _acc = acc;
+  _decay = decay;
 }
  
-void Player::on_frame_render(){
+void Player::onIdle(float dt){
     
-	Vector3f forward_dir = 0.1*get_forward_dir();
-	Vector3f side_dir = 0.1*get_side_dir();
+	Vector3f forward_dir = get_forward_dir();
+	Vector3f side_dir = get_side_dir();
 
     if (_w_down){
-    	_position += forward_dir;
+    	_velocity +=  dt*_acc*(_fspeed - _velocity.dot(forward_dir))*forward_dir;
     }
     if (_s_down){
-		_position -= forward_dir;
+		_velocity +=  dt*_acc*(_fspeed - _velocity.dot(-forward_dir))*-forward_dir;
 	}
 	if (_a_down){
-    	_position += side_dir;
+    	_velocity +=  dt*_acc*(_sspeed - _velocity.dot(side_dir))*side_dir;
     }
     if (_d_down){
-    	_position -= side_dir;
+    	_velocity +=  dt*_acc*(_sspeed - _velocity.dot(-side_dir))*-side_dir;
     }
+    _velocity *= _decay;
+
+    _position += dt * _velocity;
 
 }
 

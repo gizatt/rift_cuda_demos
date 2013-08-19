@@ -39,15 +39,17 @@ using namespace std;
 using namespace OVR;
 using namespace xen_rift;
 
+typedef enum _get_elapsed_indices{
+    GET_ELAPSED_IDLE=0,
+    GET_ELAPSED_FRAMERATE=1
+} get_elapsed_indices;
+
 //GLUT:
 int screenX, screenY;
 //Frame counters
 int totalFrames = 0;
 int frame = 0; //Start with frame 0
-unsigned long lastTicks_framerate;
-unsigned long lastTicks_elapsed;
 double currFrameRate = 0;
-unsigned long perfFreq;
 
 // particle vbo
 GLuint vbo[1];
@@ -147,11 +149,9 @@ int main(int argc, char* argv[]) {
     
     printf("Initializing... ");
     srand(time(0));
-    //Set up timer
-    LARGE_INTEGER li;
-    if(!QueryPerformanceFrequency(&li))
-        printf("QueryPerformanceFrequency failed!\n");
-    perfFreq = (unsigned long)(li.QuadPart);
+    // set up timer
+    if (init_get_elapsed())
+        exit(1);
 
     /*
     pManager = *DeviceManager::Create();
@@ -188,11 +188,11 @@ int main(int argc, char* argv[]) {
     // get helpers set up now that opengl is up
     Eigen::Vector3f zeropos = Eigen::Vector3f(0.0, 0.0, 0.0);
     Eigen::Vector2f zerorot = Eigen::Vector2f(0.0, 0.0);
-    player_manager = new Player(zeropos, zerorot, 1.6);
+    player_manager = new Player(zeropos, zerorot, 2.5, 5.0, 4.0, 20.0, 0.95);
     //Rift
     rift_manager = new Rift(1280, 720, true);
     hydra_manager = new Hydra(use_hydra, verbose);
-    hud_manager = new Ironman_HUD();
+    hud_manager = new Ironman_HUD( 0.0, 0.95, 0.5, 0.4, 0.5 );
     hud_manager->add_textbox(std::string("P_Left!"), Eigen::Vector3f(-0.3f, -0.3f, -0.2f), 
                         Eigen::Quaternionf(Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitX())),0.2f, 0.2f, 0.05f, 3.0);
     hud_manager->add_textbox(std::string("P_Right!"), Eigen::Vector3f(0.3f, -0.3f, -0.2f), 
@@ -348,7 +348,6 @@ void glut_display(){
     //output useful framerate and status info:
     //printf ("framerate: %3.1f / %4.1f\n", curr, currFrameRate);
     // frame was rendered, give the player handler a tick
-    player_manager->on_frame_render();
 
     totalFrames++;
 }
@@ -569,7 +568,7 @@ void render_core(){
 
     // and menu
     glPushMatrix();
-    hud_manager->draw(player_manager->get_position(), player_manager->get_quaternion());
+    hud_manager->draw();
     glPopMatrix();
 
     glDisable(GL_LIGHTING);
@@ -585,14 +584,17 @@ void render_core(){
 
    ######################################################################### */    
 void glut_idle(){
+    float dt = ((float)get_elapsed( GET_ELAPSED_IDLE )) / 1000.0;
 
     Eigen::Vector3f tpos = player_manager->get_position();
 
     advance_particle_swirl(vbo, tpos.x(), tpos.y(), tpos.z());
 
     // and let rift handler update
+    player_manager->onIdle(dt);
     rift_manager->onIdle();
     hydra_manager->onIdle();
+    hud_manager->onIdle(player_manager->get_position(), player_manager->get_quaternion(), dt);
 
     glutPostRedisplay();
 }
@@ -694,35 +696,13 @@ void motion(int x, int y){
                 TIMING PURPOSES
    ######################################################################### */     
 double get_framerate ( ) {
-    LARGE_INTEGER li;
-    QueryPerformanceCounter(&li);
-    unsigned long currTicks = (unsigned long)(li.QuadPart);
-    unsigned long elapsed = currTicks - lastTicks_framerate;
+    double elapsed = (double) get_elapsed(GET_ELAPSED_FRAMERATE);
     double ret;
-    if (elapsed != 0){
-        ret = (((double)totalFrames) / (((double)elapsed)/((double)perfFreq)));
+    if (elapsed != 0.){
+        ret = ((double)totalFrames) / elapsed;
     }else{
-        ret =  -1;
+        ret =  -1.0;
     }
     totalFrames = 0;
-    lastTicks_framerate = currTicks;
     return ret;
-}
-
-
-/* #########################################################################
-    
-                                get_elapsed
-                                            
-        -Returns number of milliseconds since last call to this func
-            as a double
-        
-   ######################################################################### */ 
-double get_elapsed(){
-    LARGE_INTEGER li;
-    QueryPerformanceCounter(&li);
-    unsigned long currTicks = (unsigned long)(li.QuadPart);
-    double elapsed = (((double)(currTicks - lastTicks_elapsed))/((double)perfFreq))*1000;
-    lastTicks_elapsed = currTicks;
-    return elapsed;
 }

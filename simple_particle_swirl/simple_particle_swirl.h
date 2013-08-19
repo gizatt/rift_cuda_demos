@@ -16,12 +16,11 @@
 #include "../include/gl_helper.h"
 #include <gl/gl.h>
 
-//Windows
-#include <windows.h>
-
 //Rift
 #include "OVR.h"
-
+//Windows
+#include <windows.h>
+   
 namespace xen_rift {
 	// Data dimensionality
 	#define NUM_PARTICLES (1024*250)
