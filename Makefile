@@ -72,7 +72,7 @@ $(ODIR)/textbox_3d.obj: xen_utils.obj common/textbox_3d.cpp common/textbox_3d.h
 	vcvars32
 	$(CL) /c common/textbox_3d.cpp $(CFLAGS) /Fo$@ $(LFLAGS)
 
-$(ODIR)/ironman_hud.obj: xen_utils.obj ironman_hud.obj common/ironman_hud.cpp \
+$(ODIR)/ironman_hud.obj: xen_utils.obj common/ironman_hud.cpp \
 			common/ironman_hud.h
 	vcvars32
 	$(CL) /c common/ironman_hud.cpp $(CFLAGS) /Fo$@ $(LFLAGS)

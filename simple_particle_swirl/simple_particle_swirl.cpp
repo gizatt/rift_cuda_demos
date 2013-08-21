@@ -328,13 +328,14 @@ void glut_display(){
 
     Eigen::Vector3f curr_offset = hydra_manager->getCurrentPos('r')*1.0/1000.0;
     Eigen::Vector3f curr_offset_rpy = hydra_manager->getCurrentRPY('r');
+
     Vector3f curr_t_vec(curr_translation.x(), curr_translation.y(), curr_translation.z());
     Vector3f curr_r_vec(0.0f, curr_rotation.y()*M_PI/180.0, 0.0f);
     Vector3f curr_o_vec(curr_offset.x(), curr_offset.y(), curr_offset.z());
     Vector3f curr_ro_vec(curr_offset_rpy.y(), curr_offset_rpy.x(), curr_offset_rpy.z());
-
-    // Go do Rift rendering!
-    rift_manager->render(curr_t_vec, curr_r_vec+curr_ro_vec, curr_o_vec, true, render_core);
+    curr_ro_vec = Vector3f();
+    // Go do Rift rendering! not using eye offset
+    rift_manager->render(curr_t_vec, curr_r_vec+curr_ro_vec, curr_o_vec, false, render_core);
 
     // free vbo for CUDA
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -564,6 +565,11 @@ void render_core(){
     // draw in front-guide
     glPushMatrix();
     //player_manager->draw_HUD();
+    glPopMatrix();
+
+    // and hydra pointer
+    glPushMatrix();
+    hydra_manager->draw_cursor('r', player_manager->get_position(), player_manager->get_quaternion());
     glPopMatrix();
 
     // and menu

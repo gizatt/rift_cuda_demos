@@ -118,6 +118,66 @@ void Hydra::onIdle() {
     }
 }
 
+void Hydra::draw_cursor( unsigned char which_hand, 
+    Vector3f& player_origin, Quaternionf& player_orientation ) {
+    if (_using_hydra){
+        if (which_hand == 'l' || which_hand == 'r'){
+            Vector3f pos = getCurrentPos(which_hand)/1000.0 + player_origin;
+            Quaternionf rot = getCurrentQuat(which_hand)*player_orientation;
+
+            printf("Pos: %f, %f, %f, rot: %f, %f, %f, %f\n", 
+                pos.x(), pos.y(), pos.z(), rot.w(), rot.x(), rot.y(), rot.z());
+
+            glPushMatrix();
+            glTranslatef(pos.x(), pos.y(), pos.z());
+            AngleAxisf roti = AngleAxisf(rot);
+            glRotatef(roti.angle()*180./M_PI, roti.axis().x(), roti.axis().y(), roti.axis().z() );
+
+            // rotate to orient "bottom" in -y instead of +z
+            glRotatef(-90.0, 1.0, 0.0, 0.0);
+
+            // bottom surface at
+            glBegin(GL_QUADS);
+            glVertex3f(-0.02, -0.08, -0.02);
+            glVertex3f(-0.02, -0.08, 0.02);
+            glVertex3f(0.02, -0.08, 0.02);
+            glVertex3f(0.02, -0.08, -0.02);
+            glEnd();
+
+            // -x surface
+            glBegin(GL_TRIANGLES);
+            glVertex3f(0.0, 0.0, 0.0);
+            glVertex3f(-0.02, -0.08, -0.02);
+            glVertex3f(-0.02, -0.08, 0.02);
+            glEnd();
+            // +x surface
+            glBegin(GL_TRIANGLES);
+            glVertex3f(0.0, 0.0, 0.0);
+            glVertex3f(0.02, -0.08, -0.02);
+            glVertex3f(0.02, -0.08, 0.02);
+            glEnd();
+
+            // -z surface
+            glBegin(GL_TRIANGLES);
+            glVertex3f(0.0, 0.0, 0.0);
+            glVertex3f(-0.02, -0.08, -0.02);
+            glVertex3f(0.02, -0.08, -0.02);
+            glEnd();
+            // +z surface
+            glBegin(GL_TRIANGLES);
+            glVertex3f(0.0, 0.0, 0.0);
+            glVertex3f(0.02, -0.08, 0.02);
+            glVertex3f(-0.02, -0.08, 0.02);
+            glEnd();
+
+            glPopMatrix();
+
+        } else {
+            printf("Invalid hand argument.\n");
+        }
+    }
+}
+
 Vector3f Hydra::getCurrentPos(unsigned char which_hand) {
     int i;
     if (_using_hydra){
@@ -167,9 +227,39 @@ Vector3f Hydra::getCurrentRPY(unsigned char which_hand) {
         currorr = currorr * orrorr.inverse();
 
         sixenseMath::Vector3 rpy = currorr.getEulerAngles();
-        return Vector3f(rpy[0], rpy[1], rpy[2]);
+        // make agree with opengl
+        return Vector3f(rpy[1], rpy[0], rpy[2]);
     } else {
         return Vector3f(0.0, 0.0, 0.0);
+    }
+}
+
+Quaternionf Hydra::getCurrentQuat(unsigned char which_hand) {
+    int i;
+    if (_using_hydra){
+        if (which_hand == 'l'){
+            i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1L);
+        } else if (which_hand == 'r'){
+            i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1R);
+        } else {
+            printf("Hydra::getCurrentPos called with unknown which_hand arg.\n");
+            return Quaternionf(Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitX()));
+        }
+        //sixenseMath::Vector3 currpos = sixenseMath::Vector3(_acd.controllers[i].pos);
+        //sixenseMath::Vector3 origin = sixenseMath::Vector3(_acd0.controllers[i].pos);
+
+        sixenseMath::Quat currorr = sixenseMath::Quat(_acd.controllers[i].rot_quat);
+        sixenseMath::Quat orrorr = sixenseMath::Quat(_acd0.controllers[i].rot_quat);
+
+        // We want rotation offset in our frame, which is just rotation of one quat to the other...
+        currorr = currorr * orrorr.inverse();
+        // make agree with opengl by flipping x and y rotations
+        sixenseMath::Vector3 rpy = currorr.getEulerAngles();
+        return Quaternionf(AngleAxisf(rpy[1], Eigen::Vector3f::UnitX())*
+                           AngleAxisf(rpy[0], Eigen::Vector3f::UnitY())*
+                           AngleAxisf(rpy[2], Eigen::Vector3f::UnitZ()));
+    } else {
+        return Quaternionf(Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitX()));
     }
 }
 

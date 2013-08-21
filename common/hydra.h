@@ -47,9 +47,11 @@ namespace xen_rift {
 			void mouse(int button, int state, int x, int y);
 			void motion(int x, int y);
 			void onIdle( void );
+			void draw_cursor( unsigned char hand, Eigen::Vector3f& player_origin, 
+					Eigen::Quaternionf& player_orientation );
 			Eigen::Vector3f getCurrentPos(unsigned char hand);
 			Eigen::Vector3f getCurrentRPY(unsigned char hand);
-
+			Eigen::Quaternionf getCurrentQuat(unsigned char which_hand);
 		protected:
 			bool _verbose;
 			bool _using_hydra;
