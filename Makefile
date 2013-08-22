@@ -34,21 +34,18 @@ NVCC_LFLAGS= -L./lib -Xlinker=/NODEFAULTLIB:MSVCRT -Xlinker=/NODEFAULTLIB:LIBCMT
     -lglew32d -lcutil32d --optimize 9001 \
     -use_fast_math
 
-all: simple_particle_swirl.exe
+all: $(BDIR)/simple_particle_swirl.exe
 
-simple_particle_swirl.exe: player.obj rift.obj hydra.obj xen_utils.obj ironman_hud.obj \
-	simple_particle_swirl_cu.obj \
+$(BDIR)/simple_particle_swirl.exe: $(ODIR)/player.obj $(ODIR)/rift.obj $(ODIR)/hydra.obj \
+	$(ODIR)/xen_utils.obj $(ODIR)/ironman_hud.obj \
+	$(ODIR)/simple_particle_swirl_cu.obj \
     simple_particle_swirl/simple_particle_swirl.cpp \
     simple_particle_swirl/simple_particle_swirl.h
 	vcvars32
-	$(CL) simple_particle_swirl/simple_particle_swirl.cpp $(CFLAGS) /Fe$(BDIR)/$@  \
+	$(CL) simple_particle_swirl/simple_particle_swirl.cpp $(CFLAGS) /Fe$@  \
 		$(LFLAGS) /LIBPATH:$(CUDALDIR) cudart.lib $(ODIR)/player.obj $(ODIR)/rift.obj \
 		$(ODIR)/hydra.obj $(ODIR)/textbox_3d.obj $(ODIR)/ironman_hud.obj \
 		$(ODIR)/xen_utils.obj $(ODIR)/simple_particle_swirl_cu.obj 
-
-# Compile *.obj file as from obj directory
-%.obj: $(ODIR)/%.obj
-	echo "Extending object name..."
 
 $(ODIR)/simple_particle_swirl_cu.obj: simple_particle_swirl/simple_particle_swirl.cu \
 		simple_particle_swirl/simple_particle_swirl_cu.h
@@ -56,23 +53,23 @@ $(ODIR)/simple_particle_swirl_cu.obj: simple_particle_swirl/simple_particle_swir
 	$(NVCC) $(NVCC_CFLAGS) $(NVCC_LFLAGS) -I$(RIFTIDIR),$(HYDRAIDIR) \
         -c simple_particle_swirl/simple_particle_swirl.cu -o $@
 
-$(ODIR)/player.obj: textbox_3d.obj common/player.cpp common/player.h
+$(ODIR)/player.obj: $(ODIR)/textbox_3d.obj common/player.cpp common/player.h
 	vcvars32
 	$(CL) /c common/player.cpp $(CFLAGS) /Fo$@ $(LFLAGS) /xen_utils.obj
 
-$(ODIR)/rift.obj: xen_utils.obj common/rift.cpp common/rift.h
+$(ODIR)/rift.obj: $(ODIR)/xen_utils.obj common/rift.cpp common/rift.h
 	vcvars32
 	$(CL) /c common/rift.cpp $(CFLAGS) /Fo$@ $(LFLAGS) /xen_utils.obj
 
-$(ODIR)/hydra.obj: xen_utils.obj common/hydra.cpp common/hydra.h
+$(ODIR)/hydra.obj: $(ODIR)/ironman_hud.obj $(ODIR)/xen_utils.obj common/hydra.cpp common/hydra.h
 	vcvars32
 	$(CL) /c common/hydra.cpp $(CFLAGS) /Fo$@ $(LFLAGS) /xen_utils.obj 
 
-$(ODIR)/textbox_3d.obj: xen_utils.obj common/textbox_3d.cpp common/textbox_3d.h
+$(ODIR)/textbox_3d.obj: $(ODIR)/xen_utils.obj common/textbox_3d.cpp common/textbox_3d.h
 	vcvars32
 	$(CL) /c common/textbox_3d.cpp $(CFLAGS) /Fo$@ $(LFLAGS)
 
-$(ODIR)/ironman_hud.obj: xen_utils.obj common/ironman_hud.cpp \
+$(ODIR)/ironman_hud.obj: $(ODIR)/xen_utils.obj common/ironman_hud.cpp \
 			common/ironman_hud.h
 	vcvars32
 	$(CL) /c common/ironman_hud.cpp $(CFLAGS) /Fo$@ $(LFLAGS)

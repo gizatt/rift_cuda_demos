@@ -21,12 +21,19 @@
    ######################################################################### */    
 
 #include "hydra.h"
+
 using namespace std;
 using namespace xen_rift;
 using namespace Eigen;
 
 Hydra::Hydra( bool using_hydra, bool verbose ) : _verbose(verbose),
-                               _using_hydra( using_hydra ) {
+                               _using_hydra( using_hydra ),
+                               _calibration_state( NOT_CALIBRATING ),
+                               _quatl0( Quaternionf() ),
+                               _quatr0( Quaternionf() ),
+                               _posl0( Vector3f() ),
+                               _posr0( Vector3f() ),
+                               _touch_point( Vector3f( 0.0, 0.3, -0.7) ) {
     if (_using_hydra){
         // sixsense init
         int retval = sixenseInit();
@@ -59,7 +66,10 @@ Hydra::Hydra( bool using_hydra, bool verbose ) : _verbose(verbose),
             sixenseUtils::getTheControllerManager()->update( &_acd );
         }
 
-        _acd0 = _acd;
+        // spawn textbox we'll use to present calibration instructions
+        _instruction_textbox = new Textbox_3D(string(""), Vector3f(), Vector3f(), 
+                1.0 , 0.3, 0.05, 5);
+
     } else {
         printf("Not using sixense library / hydra.\n");
     }
@@ -67,11 +77,47 @@ Hydra::Hydra( bool using_hydra, bool verbose ) : _verbose(verbose),
 }
 
 void Hydra::normal_key_handler(unsigned char key, int x, int y){
+    int i;
     if (_using_hydra){
         switch (key){
+            case 'k':
+                // store calibation zero point
+                i = sixenseUtils::getTheControllerManager()->getIndex(
+                                sixenseUtils::IControllerManager::P1L);
+                _posl0 = Vector3f(_acd.controllers[i].pos);
+                _quatl0 = Quaternionf(_acd.controllers[i].rot_quat);
+                i = sixenseUtils::getTheControllerManager()->getIndex(
+                                sixenseUtils::IControllerManager::P1R);
+                _posr0 = Vector3f(_acd.controllers[i].pos);
+                _quatr0 = Quaternionf(_acd.controllers[i].rot_quat);
+                break;
             case 'l':
-                // store calibration
-                _acd0 = _acd;
+                // advance through calibration procedure
+                switch (_calibration_state){
+                    case NOT_CALIBRATING:
+                        _calibration_state = STARTING_CALIBRATING;
+                        break;
+                    case STARTING_CALIBRATING:
+                        i = sixenseUtils::getTheControllerManager()->getIndex(
+                                        sixenseUtils::IControllerManager::P1L);
+                        _posl0 = Vector3f(_acd.controllers[i].pos) - _touch_point;
+                        i = sixenseUtils::getTheControllerManager()->getIndex(
+                                        sixenseUtils::IControllerManager::P1R);
+                        _posr0 = Vector3f(_acd.controllers[i].pos) - _touch_point;
+                        _instruction_textbox->set_text(string("Touch the square and hit l."));
+                        _calibration_state = MIDDLE_CALIBRATING;
+                        break;
+                    case MIDDLE_CALIBRATING:
+                        i = sixenseUtils::getTheControllerManager()->getIndex(
+                                        sixenseUtils::IControllerManager::P1L);
+                        _quatl0 = Quaternionf(_acd.controllers[i].rot_quat);
+                        i = sixenseUtils::getTheControllerManager()->getIndex(
+                                        sixenseUtils::IControllerManager::P1R);
+                        _quatr0 = Quaternionf(_acd.controllers[i].rot_quat);
+                        _calibration_state = NOT_CALIBRATING;
+                        _instruction_textbox->set_text(string("Hold straight out and hit l."));
+                        break;
+                }
                 break;
             default:
                 break;
@@ -115,6 +161,55 @@ void Hydra::onIdle() {
 
         Vector3f retl = getCurrentPos('l');
         Vector3f retr = getCurrentPos('r');
+
+        printf("_posr0: %f, %f, %f\n", _posr0.x(), _posr0.y(), _posr0.z());
+    }
+}
+
+void Hydra::draw( Vector3f& player_origin, Quaternionf& player_orientation ){
+    Vector3f tmp_vec;
+    // draw calibration stuff if active
+    switch(_calibration_state){
+        case STARTING_CALIBRATING:
+            // Touch point to get offset
+            // draw textbox with such instructions
+            tmp_vec = player_origin + player_orientation * Vector3f(0.0, -0.3, -1.0);
+            _instruction_textbox->set_pos(tmp_vec);
+            tmp_vec = player_origin - tmp_vec;
+            tmp_vec[1] = 0.0;
+            _instruction_textbox->set_facedir(tmp_vec);
+            tmp_vec = player_orientation * Vector3f(0.0, 1.0, 0.0);
+            _instruction_textbox->draw(tmp_vec);
+            // and draw that little box
+            tmp_vec = player_origin + player_orientation * _touch_point;;
+            glBegin(GL_QUADS);
+            glVertex3f(tmp_vec.x()-0.01, tmp_vec.y()-0.01, tmp_vec.z()-0.01);
+            glVertex3f(tmp_vec.x()-0.01, tmp_vec.y()+0.01, tmp_vec.z()-0.01);
+            glVertex3f(tmp_vec.x()+0.01, tmp_vec.y()+0.01, tmp_vec.z()+0.01);
+            glVertex3f(tmp_vec.x()+0.01, tmp_vec.y()-0.01, tmp_vec.z()+0.01);
+            glEnd();
+            glBegin(GL_QUADS);
+            glVertex3f(tmp_vec.x()+0.01, tmp_vec.y()-0.01, tmp_vec.z()-0.01);
+            glVertex3f(tmp_vec.x()+0.01, tmp_vec.y()+0.01, tmp_vec.z()-0.01);
+            glVertex3f(tmp_vec.x()-0.01, tmp_vec.y()+0.01, tmp_vec.z()+0.01);
+            glVertex3f(tmp_vec.x()-0.01, tmp_vec.y()-0.01, tmp_vec.z()+0.01);
+            glEnd();
+            break;
+        case MIDDLE_CALIBRATING:
+            // hold out straight to get angle
+            // Touch point to get offset
+            // draw textbox with such instructions
+            tmp_vec = player_origin + player_orientation * Vector3f(0.0, -0.3, -1.0);
+            _instruction_textbox->set_pos(tmp_vec);
+            tmp_vec = player_origin - tmp_vec;
+            tmp_vec[1] = 0.0;
+            _instruction_textbox->set_facedir(tmp_vec);
+            tmp_vec = player_orientation * Vector3f(0.0, 1.0, 0.0);
+            _instruction_textbox->draw(tmp_vec);
+            break;
+            break;
+        default:
+            break;
     }
 }
 
@@ -125,8 +220,8 @@ void Hydra::draw_cursor( unsigned char which_hand,
             Vector3f pos = getCurrentPos(which_hand)/1000.0 + player_origin;
             Quaternionf rot = getCurrentQuat(which_hand)*player_orientation;
 
-            printf("Pos: %f, %f, %f, rot: %f, %f, %f, %f\n", 
-                pos.x(), pos.y(), pos.z(), rot.w(), rot.x(), rot.y(), rot.z());
+            //printf("Pos: %f, %f, %f, rot: %f, %f, %f, %f\n", 
+            //    pos.x(), pos.y(), pos.z(), rot.w(), rot.x(), rot.y(), rot.z());
 
             glPushMatrix();
             glTranslatef(pos.x(), pos.y(), pos.z());
@@ -181,26 +276,30 @@ void Hydra::draw_cursor( unsigned char which_hand,
 Vector3f Hydra::getCurrentPos(unsigned char which_hand) {
     int i;
     if (_using_hydra){
+        Vector3f origin;
+        Quaternionf orrorr;
         if (which_hand == 'l'){
             i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1L);
+            origin = _posl0;
+            orrorr = _quatl0;
         } else if (which_hand == 'r'){
             i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1R);
+            origin = _posr0;
+            orrorr = _quatr0;
         } else {
             printf("Hydra::getCurrentPos called with unknown which_hand arg.\n");
             return Vector3f(0.0, 0.0, 0.0);
         }
-        sixenseMath::Vector3 currpos = sixenseMath::Vector3(_acd.controllers[i].pos);
-        sixenseMath::Vector3 origin = sixenseMath::Vector3(_acd0.controllers[i].pos);
+        Vector3f currpos = Vector3f(_acd.controllers[i].pos);
 
-        sixenseMath::Quat currorr = sixenseMath::Quat(_acd.controllers[i].rot_quat);
-        sixenseMath::Quat orrorr = sixenseMath::Quat(_acd0.controllers[i].rot_quat);
+        Quaternionf currorr = Quaternionf(_acd.controllers[i].rot_quat);
 
         // We want offset in frame of our new origin. So take difference between origins...
         currpos -= origin;
         // And rotate by origin rotation
         currpos = orrorr.inverse()*currpos;
 
-        return Vector3f(currpos[0], currpos[1], currpos[2]);
+        return currpos;
     } else {
         return Vector3f(0.0, 0.0, 0.0);
     }
@@ -209,24 +308,24 @@ Vector3f Hydra::getCurrentPos(unsigned char which_hand) {
 Vector3f Hydra::getCurrentRPY(unsigned char which_hand) {
     int i;
     if (_using_hydra){
+        Quaternionf orrorr;
         if (which_hand == 'l'){
             i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1L);
+            orrorr = _quatl0;
         } else if (which_hand == 'r'){
             i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1R);
+            orrorr = _quatr0;
         } else {
             printf("Hydra::getCurrentPos called with unknown which_hand arg.\n");
             return Vector3f(0.0, 0.0, 0.0);
         }
-        //sixenseMath::Vector3 currpos = sixenseMath::Vector3(_acd.controllers[i].pos);
-        //sixenseMath::Vector3 origin = sixenseMath::Vector3(_acd0.controllers[i].pos);
 
-        sixenseMath::Quat currorr = sixenseMath::Quat(_acd.controllers[i].rot_quat);
-        sixenseMath::Quat orrorr = sixenseMath::Quat(_acd0.controllers[i].rot_quat);
+        Quaternionf currorr = Quaternionf(_acd.controllers[i].rot_quat);
 
         // We want rotation offset in our frame, which is just rotation of one quat to the other...
         currorr = currorr * orrorr.inverse();
 
-        sixenseMath::Vector3 rpy = currorr.getEulerAngles();
+        Vector3f rpy = getEulerAnglesFromQuat(currorr);
         // make agree with opengl
         return Vector3f(rpy[1], rpy[0], rpy[2]);
     } else {
@@ -237,24 +336,24 @@ Vector3f Hydra::getCurrentRPY(unsigned char which_hand) {
 Quaternionf Hydra::getCurrentQuat(unsigned char which_hand) {
     int i;
     if (_using_hydra){
+        Quaternionf orrorr;
         if (which_hand == 'l'){
             i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1L);
+            orrorr = _quatl0;
         } else if (which_hand == 'r'){
             i = sixenseUtils::getTheControllerManager()->getIndex(sixenseUtils::IControllerManager::P1R);
+            orrorr = _quatr0;
         } else {
             printf("Hydra::getCurrentPos called with unknown which_hand arg.\n");
             return Quaternionf(Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitX()));
         }
-        //sixenseMath::Vector3 currpos = sixenseMath::Vector3(_acd.controllers[i].pos);
-        //sixenseMath::Vector3 origin = sixenseMath::Vector3(_acd0.controllers[i].pos);
 
-        sixenseMath::Quat currorr = sixenseMath::Quat(_acd.controllers[i].rot_quat);
-        sixenseMath::Quat orrorr = sixenseMath::Quat(_acd0.controllers[i].rot_quat);
+        Quaternionf currorr = Quaternionf(_acd.controllers[i].rot_quat);
 
         // We want rotation offset in our frame, which is just rotation of one quat to the other...
         currorr = currorr * orrorr.inverse();
-        // make agree with opengl by flipping x and y rotations
-        sixenseMath::Vector3 rpy = currorr.getEulerAngles();
+
+        Vector3f rpy = getEulerAnglesFromQuat(currorr);
         return Quaternionf(AngleAxisf(rpy[1], Eigen::Vector3f::UnitX())*
                            AngleAxisf(rpy[0], Eigen::Vector3f::UnitY())*
                            AngleAxisf(rpy[2], Eigen::Vector3f::UnitZ()));

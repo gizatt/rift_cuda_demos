@@ -25,7 +25,12 @@
 //Windows
 #include <windows.h>
 
+#include "Eigen/Dense"
+#include "Eigen/Geometry"
+
 namespace xen_rift {
+
+    Eigen::Vector3f getEulerAnglesFromQuat(Eigen::Quaternionf& input);
 
     #define NUM_GET_ELAPSED_INDICES 100
     int init_get_elapsed( void );

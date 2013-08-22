@@ -16,7 +16,35 @@
 #include "xen_utils.h"
 using namespace std;
 using namespace xen_rift;
+using namespace Eigen;
 
+// Converts Eigen Quaternion to a Vector3f of Euler Angles
+// adapted from sixense_math file of the sixense SDK
+Vector3f xen_rift::getEulerAnglesFromQuat(Quaternionf& input){
+    Vector3f retval;
+    Matrix3f cols=input.toRotationMatrix();
+    float h, p, r;
+    float A, B;
+
+    B = cols(1, 2);
+    p = asinf( B );
+    A = cosf( p );
+
+
+    if( fabs( A ) > 0.005f ) {
+        h = atan2f( -cols(0, 2)/A, cols(2, 2)/A ); // atan2( D, C )
+        r = atan2f( -cols(1, 0)/A, cols(1, 1)/A ); // atan2( F, E )
+    } else {
+        h = 0;
+        r = atan2f( cols(2, 1), cols(2, 0) ); // atan2( F, E ) when B=0, D=1
+    }
+
+    retval[0] = h;
+    retval[1] = p;
+    retval[2] = r;
+
+    return retval;
+}
 // Returns elapsed time in ms since last call to this function with the
 //  given index, or 0 if this is the first time that index has been used
 //  or if the index is out of range.

@@ -35,6 +35,10 @@ Textbox_3D::Textbox_3D(string& text, Vector3f& initpos, Quaternionf& initquat,
     _line_width = (GLfloat) line_width;
 }
 
+void Textbox_3D::set_text( string& text ){
+    _text = text;
+}
+
 void Textbox_3D::set_pos( Vector3f& newpos ){
     _pos = newpos;
 }

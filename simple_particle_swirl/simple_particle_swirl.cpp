@@ -570,6 +570,7 @@ void render_core(){
     // and hydra pointer
     glPushMatrix();
     hydra_manager->draw_cursor('r', player_manager->get_position(), player_manager->get_quaternion());
+    hydra_manager->draw(player_manager->get_position(), player_manager->get_quaternion());
     glPopMatrix();
 
     // and menu

@@ -31,6 +31,7 @@ namespace xen_rift {
 				float width = 0.3, float height=0.2, float depth=0.05, float line_width = 1.0f);
 			Textbox_3D(std::string& text, Eigen::Vector3f& initpos, Eigen::Quaternionf& initquat, 
 				float width = 0.3, float height=0.2, float depth=0.05, float line_width = 1.0f);
+			void set_text( std::string& text );
 			void set_pos( Eigen::Vector3f& newpos );
 			void set_facedir( Eigen::Vector3f& newfacedir );
 			void draw( Eigen::Vector3f& up_dir );
