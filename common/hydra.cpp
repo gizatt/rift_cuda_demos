@@ -68,7 +68,7 @@ Hydra::Hydra( bool using_hydra, bool verbose ) : _verbose(verbose),
 
         // spawn textbox we'll use to present calibration instructions
         _instruction_textbox = new Textbox_3D(string(""), Vector3f(), Vector3f(), 
-                1.5 , 0.5, 0.05, 5);
+                2.0 , 0.5, 0.05, 3);
 
     } else {
         printf("Not using sixense library / hydra.\n");
