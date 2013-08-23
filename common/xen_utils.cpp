@@ -21,6 +21,7 @@ using namespace Eigen;
 // Converts Eigen Quaternion to a Vector3f of Euler Angles
 // adapted from sixense_math file of the sixense SDK
 Vector3f xen_rift::getEulerAnglesFromQuat(Quaternionf& input){
+    //printf("Input: %f %f %f %f\n", input.w(), input.x(), input.y(), input.z());
     Vector3f retval;
     Matrix3f cols=input.toRotationMatrix();
     float h, p, r;
@@ -39,10 +40,11 @@ Vector3f xen_rift::getEulerAnglesFromQuat(Quaternionf& input){
         r = atan2f( cols(2, 1), cols(2, 0) ); // atan2( F, E ) when B=0, D=1
     }
 
-    retval[0] = h;
-    retval[1] = p;
-    retval[2] = r;
+    retval[1] = -h;
+    retval[0] = -p;
+    retval[2] = -r;
 
+    //printf("output: %f %f %f\n", retval[0], retval[1], retval[2]);
     return retval;
 }
 // Returns elapsed time in ms since last call to this function with the

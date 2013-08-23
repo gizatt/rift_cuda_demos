@@ -128,6 +128,51 @@ extern void advance_particle_swirl(GLuint * vbo, float px, float py, float pz);
         
    ######################################################################### */    
 int main(int argc, char* argv[]) {    
+
+    /*
+    Eigen::Quaternionf tmp;
+    printf("Test x axis\n");
+    tmp = Eigen::Quaternionf(Eigen::AngleAxisf(M_PI/4.0, Eigen::Vector3f::UnitX())*
+                       Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitY())*
+                       Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitZ()));
+    getEulerAnglesFromQuat(tmp);
+    tmp = Eigen::Quaternionf(Eigen::AngleAxisf(-M_PI/4.0, Eigen::Vector3f::UnitX())*
+                       Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitY())*
+                       Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitZ()));
+    getEulerAnglesFromQuat(tmp);
+    tmp = Eigen::Quaternionf(Eigen::AngleAxisf(M_PI/2.0, Eigen::Vector3f::UnitX())*
+                       Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitY())*
+                       Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitZ()));
+    getEulerAnglesFromQuat(tmp);
+    printf("Test y axis\n");
+    tmp = Eigen::Quaternionf(Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitX())*
+                       Eigen::AngleAxisf(M_PI/4.0, Eigen::Vector3f::UnitY())*
+                       Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitZ()));
+    getEulerAnglesFromQuat(tmp);
+    tmp = Eigen::Quaternionf(Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitX())*
+                       Eigen::AngleAxisf(-M_PI/4.0, Eigen::Vector3f::UnitY())*
+                       Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitZ()));
+    getEulerAnglesFromQuat(tmp);
+    tmp = Eigen::Quaternionf(Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitX())*
+                       Eigen::AngleAxisf(M_PI/2.0, Eigen::Vector3f::UnitY())*
+                       Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitZ()));
+    getEulerAnglesFromQuat(tmp);
+    printf("Test z axis\n");
+    tmp = Eigen::Quaternionf(Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitX())*
+                       Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitY())*
+                       Eigen::AngleAxisf(M_PI/4.0, Eigen::Vector3f::UnitZ()));
+    getEulerAnglesFromQuat(tmp);
+    tmp = Eigen::Quaternionf(Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitX())*
+                       Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitY())*
+                       Eigen::AngleAxisf(-M_PI/4.0, Eigen::Vector3f::UnitZ()));
+    getEulerAnglesFromQuat(tmp);
+    tmp = Eigen::Quaternionf(Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitX())*
+                       Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitY())*
+                       Eigen::AngleAxisf(M_PI/2.0, Eigen::Vector3f::UnitZ()));
+    getEulerAnglesFromQuat(tmp);
+    return 0;
+    */
+
     //Deal with cmd-line args
     //printf("argc = %d, argv[0] = %s, argv[1] = %s\n",argc, argv[0], argv[1]);
     bool use_hydra = true;

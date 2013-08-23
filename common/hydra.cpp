@@ -33,7 +33,7 @@ Hydra::Hydra( bool using_hydra, bool verbose ) : _verbose(verbose),
                                _quatr0( Quaternionf() ),
                                _posl0( Vector3f() ),
                                _posr0( Vector3f() ),
-                               _touch_point( Vector3f( 0.0, 0.3, -0.7) ) {
+                               _touch_point( Vector3f( 0.0, 0.3, -0.3) ) {
     if (_using_hydra){
         // sixsense init
         int retval = sixenseInit();
@@ -68,7 +68,7 @@ Hydra::Hydra( bool using_hydra, bool verbose ) : _verbose(verbose),
 
         // spawn textbox we'll use to present calibration instructions
         _instruction_textbox = new Textbox_3D(string(""), Vector3f(), Vector3f(), 
-                1.0 , 0.3, 0.05, 5);
+                1.5 , 0.5, 0.05, 5);
 
     } else {
         printf("Not using sixense library / hydra.\n");
@@ -96,15 +96,16 @@ void Hydra::normal_key_handler(unsigned char key, int x, int y){
                 switch (_calibration_state){
                     case NOT_CALIBRATING:
                         _calibration_state = STARTING_CALIBRATING;
+                        _instruction_textbox->set_text(string("Touch the square and hit l."));
                         break;
                     case STARTING_CALIBRATING:
                         i = sixenseUtils::getTheControllerManager()->getIndex(
                                         sixenseUtils::IControllerManager::P1L);
-                        _posl0 = Vector3f(_acd.controllers[i].pos) - _touch_point;
+                        _posl0 = Vector3f(_acd.controllers[i].pos);
                         i = sixenseUtils::getTheControllerManager()->getIndex(
                                         sixenseUtils::IControllerManager::P1R);
-                        _posr0 = Vector3f(_acd.controllers[i].pos) - _touch_point;
-                        _instruction_textbox->set_text(string("Touch the square and hit l."));
+                        _posr0 = Vector3f(_acd.controllers[i].pos);
+                        _instruction_textbox->set_text(string("Hold straight out and hit l."));
                         _calibration_state = MIDDLE_CALIBRATING;
                         break;
                     case MIDDLE_CALIBRATING:
@@ -115,7 +116,6 @@ void Hydra::normal_key_handler(unsigned char key, int x, int y){
                                         sixenseUtils::IControllerManager::P1R);
                         _quatr0 = Quaternionf(_acd.controllers[i].rot_quat);
                         _calibration_state = NOT_CALIBRATING;
-                        _instruction_textbox->set_text(string("Hold straight out and hit l."));
                         break;
                 }
                 break;
@@ -161,8 +161,6 @@ void Hydra::onIdle() {
 
         Vector3f retl = getCurrentPos('l');
         Vector3f retr = getCurrentPos('r');
-
-        printf("_posr0: %f, %f, %f\n", _posr0.x(), _posr0.y(), _posr0.z());
     }
 }
 
@@ -217,17 +215,32 @@ void Hydra::draw_cursor( unsigned char which_hand,
     Vector3f& player_origin, Quaternionf& player_orientation ) {
     if (_using_hydra){
         if (which_hand == 'l' || which_hand == 'r'){
-            Vector3f pos = getCurrentPos(which_hand)/1000.0 + player_origin;
-            Quaternionf rot = getCurrentQuat(which_hand)*player_orientation;
+            Vector3f tmp = getCurrentPos(which_hand)/1000.0;
+            Vector3f pos = player_orientation*(getCurrentPos(which_hand)/1000.0) + player_origin;
+            Quaternionf rot = player_orientation*getCurrentQuat(which_hand);
 
             //printf("Pos: %f, %f, %f, rot: %f, %f, %f, %f\n", 
             //    pos.x(), pos.y(), pos.z(), rot.w(), rot.x(), rot.y(), rot.z());
 
             glPushMatrix();
-            glTranslatef(pos.x(), pos.y(), pos.z());
-            AngleAxisf roti = AngleAxisf(rot);
-            glRotatef(roti.angle()*180./M_PI, roti.axis().x(), roti.axis().y(), roti.axis().z() );
+            //glTranslatef(pos.x(), pos.y(), pos.z());
+            //AngleAxisf roti = AngleAxisf(rot);
+            //glRotatef(roti.angle()*180./M_PI, roti.axis().x(), roti.axis().y(), roti.axis().z() );
 
+            float rot_mat[4][4];
+            Matrix3f roti = rot.normalized().toRotationMatrix();
+            for( int i=0; i<3; i++ ) 
+                for( int j=0; j<3; j++ ) 
+                    rot_mat[i][j] = roti(j, i);
+
+            rot_mat[0][3] = 0.0f;
+            rot_mat[1][3] = 0.0f;
+            rot_mat[2][3] = 0.0f;
+            rot_mat[3][0] = pos[0];
+            rot_mat[3][1] = pos[1];
+            rot_mat[3][2] = pos[2];
+            rot_mat[3][3] = 1.0f;
+            glMultMatrixf( (GLfloat*)rot_mat );
             // rotate to orient "bottom" in -y instead of +z
             glRotatef(-90.0, 1.0, 0.0, 0.0);
 
@@ -241,26 +254,26 @@ void Hydra::draw_cursor( unsigned char which_hand,
 
             // -x surface
             glBegin(GL_TRIANGLES);
-            glVertex3f(0.0, 0.0, 0.0);
+            glVertex3f(0.0, 0.05, 0.0);
             glVertex3f(-0.02, -0.08, -0.02);
             glVertex3f(-0.02, -0.08, 0.02);
             glEnd();
             // +x surface
             glBegin(GL_TRIANGLES);
-            glVertex3f(0.0, 0.0, 0.0);
+            glVertex3f(0.0, 0.05, 0.0);
             glVertex3f(0.02, -0.08, -0.02);
             glVertex3f(0.02, -0.08, 0.02);
             glEnd();
 
             // -z surface
             glBegin(GL_TRIANGLES);
-            glVertex3f(0.0, 0.0, 0.0);
+            glVertex3f(0.0, 0.05, 0.0);
             glVertex3f(-0.02, -0.08, -0.02);
             glVertex3f(0.02, -0.08, -0.02);
             glEnd();
             // +z surface
             glBegin(GL_TRIANGLES);
-            glVertex3f(0.0, 0.0, 0.0);
+            glVertex3f(0.0, 0.05, 0.0);
             glVertex3f(0.02, -0.08, 0.02);
             glVertex3f(-0.02, -0.08, 0.02);
             glEnd();
@@ -299,12 +312,17 @@ Vector3f Hydra::getCurrentPos(unsigned char which_hand) {
         // And rotate by origin rotation
         currpos = orrorr.inverse()*currpos;
 
+        // add in the touch point
+        currpos += _touch_point*1000.0;
+
         return currpos;
     } else {
         return Vector3f(0.0, 0.0, 0.0);
     }
 }
 
+// I REALLY REALLY ADVISE AGAINST USING THIS... RPY LOSES SOME ORIENTATION INFO
+// THAT QUATS MAINTAIN.
 Vector3f Hydra::getCurrentRPY(unsigned char which_hand) {
     int i;
     if (_using_hydra){
@@ -327,7 +345,7 @@ Vector3f Hydra::getCurrentRPY(unsigned char which_hand) {
 
         Vector3f rpy = getEulerAnglesFromQuat(currorr);
         // make agree with opengl
-        return Vector3f(rpy[1], rpy[0], rpy[2]);
+        return Vector3f(rpy[2], rpy[1], -rpy[0]);
     } else {
         return Vector3f(0.0, 0.0, 0.0);
     }
@@ -353,10 +371,7 @@ Quaternionf Hydra::getCurrentQuat(unsigned char which_hand) {
         // We want rotation offset in our frame, which is just rotation of one quat to the other...
         currorr = currorr * orrorr.inverse();
 
-        Vector3f rpy = getEulerAnglesFromQuat(currorr);
-        return Quaternionf(AngleAxisf(rpy[1], Eigen::Vector3f::UnitX())*
-                           AngleAxisf(rpy[0], Eigen::Vector3f::UnitY())*
-                           AngleAxisf(rpy[2], Eigen::Vector3f::UnitZ()));
+        return Quaternionf(currorr.w(), currorr.z(), currorr.y(), -currorr.x());
     } else {
         return Quaternionf(Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitX()));
     }
