@@ -18,14 +18,20 @@ CUDADIR=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v5.0
 CUDAIDIR="$(CUDADIR)\include"
 CUDALDIR="$(CUDADIR)\lib\Win32"
 
+## UPDATE TO YOUR OPENCV DIR
+OPENCVDIR=C:\opencv
+OPENCVIDIR="$(OPENCVDIR)\build\include"
+OPENCVSLDIR="$(OPENCVDIR)\build\x86\vc10\staticlib"
+OPENCVLDIR="$(OPENCVDIR)\build\x86\vc10\lib"
+
 ODIR=./obj
 IDIR=./include
 BDIR=./bin
 
-CFLAGS=/I$(RIFTIDIR) /I$(HYDRAIDIR) /I$(IDIR)
+CFLAGS=/I$(RIFTIDIR) /I$(HYDRAIDIR) /I$(IDIR) /I$(OPENCVDIR) /I$(OPENCVIDIR)
 LFLAGS= /MD /link /LIBPATH:./lib /LIBPATH:$(RIFTLDIR) /NODEFAULTLIB:LIBCMT\
 	SOIL.lib sixensed.lib sixense_utilsd.lib libovr.lib libovrd.lib opengl32.lib User32.lib Gdi32.lib \
-    glew32d.lib cutil32d.lib 
+    glew32d.lib cutil32d.lib shell32.lib
 
 NVCC_CFLAGS=
 NVCC_LFLAGS= -L./lib -Xlinker=/NODEFAULTLIB:MSVCRT -Xlinker=/NODEFAULTLIB:LIBCMT \
@@ -34,7 +40,7 @@ NVCC_LFLAGS= -L./lib -Xlinker=/NODEFAULTLIB:MSVCRT -Xlinker=/NODEFAULTLIB:LIBCMT
     -lglew32d -lcutil32d --optimize 9001 \
     -use_fast_math
 
-all: $(BDIR)/simple_particle_swirl.exe
+all: $(BDIR)/simple_particle_swirl.exe $(BDIR)/webcam_feedthrough.exe
 
 $(BDIR)/simple_particle_swirl.exe: $(ODIR)/player.obj $(ODIR)/rift.obj $(ODIR)/hydra.obj \
 	$(ODIR)/xen_utils.obj $(ODIR)/ironman_hud.obj \
@@ -52,6 +58,14 @@ $(ODIR)/simple_particle_swirl_cu.obj: simple_particle_swirl/simple_particle_swir
 	vcvars32
 	$(NVCC) $(NVCC_CFLAGS) $(NVCC_LFLAGS) -I$(RIFTIDIR),$(HYDRAIDIR) \
         -c simple_particle_swirl/simple_particle_swirl.cu -o $@
+
+$(BDIR)/webcam_feedthrough.exe: $(ODIR)/rift.obj $(ODIR)/xen_utils.obj \
+		webcam_feedthrough/webcam_feedthrough.cpp webcam_feedthrough/webcam_feedthrough.h
+	vcvars32
+	$(CL) webcam_feedthrough/webcam_feedthrough.cpp $(CFLAGS) /Fe$@  \
+		$(LFLAGS) /LIBPATH:$(OPENCVLDIR) /LIBPATH:$(OPENCVSLDIR) $(ODIR)/rift.obj \
+		$(ODIR)/xen_utils.obj opencv_core246.lib opencv_highgui246.lib \
+		opencv_imgproc246.lib
 
 $(ODIR)/player.obj: $(ODIR)/textbox_3d.obj common/player.cpp common/player.h
 	vcvars32
