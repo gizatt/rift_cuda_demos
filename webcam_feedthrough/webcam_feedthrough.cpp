@@ -52,10 +52,12 @@ Rift * rift_manager;
 CvCapture* capture;
 GLuint ipl_convert_texture;
 float render_dist = 1.5;
+bool draw_main_image = true;
 bool black_and_white = false;
 bool apply_threshold = false;
 bool apply_sobel = false;
 bool apply_canny_contours = false;
+bool apply_features = false;
 int threshold_val = 100;
 int canny_thresh = 50;
 RNG rng(12345);
@@ -245,11 +247,27 @@ void glut_display(){
         printf( "ERROR: frame is null...\n" );
     } else {
         Mat frame(frame_ipl);
+        vector<KeyPoint> keypoints;
+        vector<vector<Point> > contours;
+        vector<Vec4i> hierarchy;
         Mat gray = Mat(frame.size(),IPL_DEPTH_8U,1);
         Mat gray2 = Mat(frame.size(),IPL_DEPTH_8U,1);
+        if (apply_features){
+            StarFeatureDetector detector;
+            detector.detect(frame, keypoints);
+        }
 
         if (black_and_white || apply_threshold || apply_sobel || apply_canny_contours){
             cvtColor(frame, gray, CV_BGR2GRAY);
+        }
+
+        if (apply_canny_contours){
+            Mat canny_output;
+            /// Detect edges using canny
+            Canny( gray, canny_output, canny_thresh, canny_thresh*2, 3 );
+            /// Find contours
+            findContours( canny_output, contours, hierarchy, 
+                CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
         }
         if (apply_threshold){
             threshold( gray, gray2, threshold_val, 255, THRESH_BINARY );
@@ -265,32 +283,27 @@ void glut_display(){
             Sobel( gray, grad_y, CV_16S, 0, 1, 3, 1, 0, BORDER_DEFAULT );
             convertScaleAbs( grad_y, abs_grad_y );
             addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, gray2 );
-        } else if (apply_canny_contours) {
-            Mat canny_output;
-            vector<vector<Point> > contours;
-            vector<Vec4i> hierarchy;
-
-            /// Detect edges using canny
-            Canny( gray, canny_output, canny_thresh, canny_thresh*2, 3 );
-            /// Find contours
-            findContours( canny_output, contours, hierarchy, 
-                CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
-
-            /// Draw contours
-            Mat frame2 = Mat(frame.size(), frame.type());
-            for( int i = 0; i< contours.size(); i++ ){
-                Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-                drawContours( frame2, contours, i, color, 2, 8, hierarchy, 0, Point() );
-            }
-            frame = frame2;
         }
+
+        // if not drawing main image, then clear it out.
+        if (!draw_main_image)
+            frame = Mat(frame.size(), frame.type());
 
         if (apply_threshold || apply_sobel)
             cvtColor(gray2, frame, CV_GRAY2BGR);
         else if (black_and_white)
             cvtColor(gray, frame, CV_GRAY2BGR);
 
-
+        if (apply_features)
+            // Add results to image and save.
+            cv::drawKeypoints(frame, keypoints, frame);
+        if (apply_canny_contours){
+            /// Draw contours
+            for( int i = 0; i< contours.size(); i++ ){
+                Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+                drawContours( frame, contours, i, color, 2, 8, hierarchy, 0, Point() );
+            }
+        }
 
           /// Gradient X
           //Scharr( src_gray, grad_x, ddepth, 1, 0, scale, delta, BORDER_DEFAULT );
@@ -415,22 +428,22 @@ void normal_key_handler(unsigned char key, int x, int y) {
             apply_threshold = !apply_threshold;
             if (apply_threshold){
                 apply_sobel = false;
-                apply_canny_contours = false;
             }
             break;
         case 's':
             apply_sobel = !apply_sobel;
             if (apply_sobel){
                 apply_threshold = false;
-                apply_canny_contours = false;
             }
+            break;
+        case 'i':
+            draw_main_image = !draw_main_image;
             break;
         case 'c':
             apply_canny_contours = !apply_canny_contours;
-            if (apply_canny_contours){
-                apply_threshold = false;
-                apply_sobel = false;
-            }
+            break;
+        case 'f':
+            apply_features = !apply_features;
             break;
         case ']':
             if (threshold_val < 255)

@@ -65,7 +65,7 @@ $(BDIR)/webcam_feedthrough.exe: $(ODIR)/rift.obj $(ODIR)/xen_utils.obj \
 	$(CL) webcam_feedthrough/webcam_feedthrough.cpp $(CFLAGS) /Fe$@  \
 		$(LFLAGS) /LIBPATH:$(OPENCVLDIR) /LIBPATH:$(OPENCVSLDIR) $(ODIR)/rift.obj \
 		$(ODIR)/xen_utils.obj opencv_core246.lib opencv_highgui246.lib \
-		opencv_imgproc246.lib
+		opencv_imgproc246.lib opencv_features2d246.lib
 
 $(ODIR)/player.obj: $(ODIR)/textbox_3d.obj common/player.cpp common/player.h
 	vcvars32
