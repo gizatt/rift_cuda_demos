@@ -50,6 +50,7 @@ Rift * rift_manager;
 
 //opencv image capture
 CvCapture* capture;
+int capture_num = 0;
 GLuint ipl_convert_texture;
 float render_dist = 1.5;
 bool draw_main_image = true;
@@ -140,7 +141,7 @@ int main(int argc, char* argv[]) {
     rift_manager = new Rift(1280, 720, true);
 
     //opencv capture
-    capture = cvCaptureFromCAM(CV_CAP_ANY); 
+    capture = cvCaptureFromCAM(capture_num); 
 
     printf("done!\n");
     glutMainLoop();
@@ -464,6 +465,17 @@ void normal_key_handler(unsigned char key, int x, int y) {
             if (canny_thresh > 0)
                 canny_thresh-=5;
             printf("Canny threshold val %d\n", canny_thresh);
+            break;
+        case '<':
+            if (capture_num > 0)
+                capture_num-=1;
+            capture = cvCaptureFromCAM(capture_num); 
+            printf("Capture num %d\n", capture_num);
+            break;
+        case '>':
+            capture_num++;
+            capture = cvCaptureFromCAM(capture_num); 
+            printf("Capture num %d\n", capture_num);
             break;
         default:
             break;

@@ -435,9 +435,7 @@ void Rift::stereoWarp(GLuint outFBO, GLuint inTexture)
 
 void Rift::render(Vector3f EyePos, Vector3f EyeRot, OVR::Vector3f EyeOffset, 
                   bool use_EyeOffset, void (*draw_scene)(void)){
-
-    // Eyeoffset = we have positional tracking!
-
+    
     // Rotate and position View Camera, using YawPitchRoll in BodyFrame coordinates.
     Matrix4f rollPitchYaw = Matrix4f::RotationY(_EyeYaw+EyeRot.y) * 
                             Matrix4f::RotationX(_EyePitch+EyeRot.x) *
