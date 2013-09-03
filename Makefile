@@ -59,12 +59,12 @@ $(ODIR)/simple_particle_swirl_cu.obj: simple_particle_swirl/simple_particle_swir
 	$(NVCC) $(NVCC_CFLAGS) $(NVCC_LFLAGS) -I$(RIFTIDIR),$(HYDRAIDIR) \
         -c simple_particle_swirl/simple_particle_swirl.cu -o $@
 
-$(BDIR)/webcam_feedthrough.exe: $(ODIR)/rift.obj $(ODIR)/xen_utils.obj \
+$(BDIR)/webcam_feedthrough.exe: $(ODIR)/rift.obj $(ODIR)/xen_utils.obj $(ODIR)/textbox_3d.obj \
 		webcam_feedthrough/webcam_feedthrough.cpp webcam_feedthrough/webcam_feedthrough.h
 	vcvars32
 	$(CL) webcam_feedthrough/webcam_feedthrough.cpp $(CFLAGS) /Fe$@  \
 		$(LFLAGS) /LIBPATH:$(OPENCVLDIR) /LIBPATH:$(OPENCVSLDIR) $(ODIR)/rift.obj \
-		$(ODIR)/xen_utils.obj opencv_core246.lib opencv_highgui246.lib \
+		$(ODIR)/xen_utils.obj $(ODIR)/textbox_3d.obj opencv_core246.lib opencv_highgui246.lib \
 		opencv_imgproc246.lib opencv_features2d246.lib
 
 $(ODIR)/player.obj: $(ODIR)/textbox_3d.obj common/player.cpp common/player.h

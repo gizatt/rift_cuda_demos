@@ -23,6 +23,7 @@
 #include "webcam_feedthrough.h"
 
 #include "../common/rift.h"
+#include "../common/textbox_3d.h"
 
 // handy image loading
 #include "../include/SOIL.h"
@@ -41,7 +42,7 @@ typedef enum _get_elapsed_indices{
 //GLUT:
 int screenX, screenY;
 //Frame counters
-int totalFrames = 0;
+int totalFrames = 1;
 int frame = 0; //Start with frame 0
 double currFrameRate = 0;
 
@@ -49,10 +50,13 @@ double currFrameRate = 0;
 Rift * rift_manager;
 
 //opencv image capture
-CvCapture* capture;
-int capture_num = 0;
+CvCapture* l_capture;
+int l_capture_num = 0;
+CvCapture* r_capture;
+int r_capture_num = 1;
+
 GLuint ipl_convert_texture;
-float render_dist = 1.5;
+float render_dist = 1.95;
 bool draw_main_image = true;
 bool black_and_white = false;
 bool apply_threshold = false;
@@ -60,8 +64,13 @@ bool apply_sobel = false;
 bool apply_canny_contours = false;
 bool apply_features = false;
 int threshold_val = 100;
-int canny_thresh = 50;
+int canny_thresh = 100;
 RNG rng(12345);
+
+// FPS textbox
+Textbox_3D * textbox_fps;
+Eigen::Vector3f textbox_fps_pos(-2.0, -2.0, -0.5);
+bool show_textbox_fps = false;
 
 /* #########################################################################
     
@@ -122,6 +131,7 @@ int main(int argc, char* argv[]) {
     // set up timer
     if (init_get_elapsed())
         exit(1);
+    get_elapsed(GET_ELAPSED_FRAMERATE);
 
     //Go get openGL set up / get the critical glob. variables set up
     initOpenGL(1280, 720, NULL);
@@ -141,12 +151,19 @@ int main(int argc, char* argv[]) {
     rift_manager = new Rift(1280, 720, true);
 
     //opencv capture
-    capture = cvCaptureFromCAM(capture_num); 
+    l_capture = cvCaptureFromCAM(l_capture_num); 
+    r_capture = cvCaptureFromCAM(r_capture_num); 
+
+    //fps textbox
+    Eigen::Vector3f tmpdir = -1.0*textbox_fps_pos;
+    textbox_fps = new Textbox_3D(string("FPS: NNN"), textbox_fps_pos, 
+           tmpdir, 1.5, 0.8, 0.05, 5);
 
     printf("done!\n");
     glutMainLoop();
 
-    cvReleaseCapture( &capture );
+    cvReleaseCapture( &l_capture );
+    cvReleaseCapture( &r_capture );
     return(1);
 }
 
@@ -239,8 +256,53 @@ void glut_display(){
     //Clear out buffers before rendering the new scene
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    // and get player location
+    Eigen::Vector3f curr_translation(0.0, 0.0, 0.0);
+    Eigen::Vector2f curr_rotation(0.0, 0.0);
+
+    Eigen::Vector3f curr_offset(0.0, 0.0, 0.0);
+    Eigen::Vector3f curr_offset_rpy(0.0, 0.0, 0.0);
+
+    Vector3f curr_t_vec(curr_translation.x(), curr_translation.y(), curr_translation.z());
+    Vector3f curr_r_vec(0.0f, curr_rotation.y()*M_PI/180.0, 0.0f);
+    Vector3f curr_o_vec(curr_offset.x(), curr_offset.y(), curr_offset.z());
+    Vector3f curr_ro_vec(curr_offset_rpy.y(), curr_offset_rpy.x(), curr_offset_rpy.z());
+    curr_ro_vec = Vector3f();
+    // Go do Rift rendering! not using eye offset
+    rift_manager->render(curr_t_vec, curr_r_vec+curr_ro_vec, curr_o_vec, false, render_core);
+
+    double curr = get_framerate();
+    if (currFrameRate != 0.0f)
+        currFrameRate = (10.0f*currFrameRate + curr)/11.0f;
+    else
+        currFrameRate = curr;
+
+    char tmp[100];
+    sprintf(tmp, "FPS: %0.3f", currFrameRate);
+    textbox_fps->set_text(string(tmp));
+
+    //output useful framerate and status info:
+    // printf ("framerate: %3.1f / %4.1f\n", curr, currFrameRate);
+    // frame was rendered, give the player handler a tick
+
+    totalFrames++;
+}
+
+/* #########################################################################
+    
+                                render_core
+        Render functionality shared between eyes.
+
+   ######################################################################### */
+void render_core(){
+
     //capture webcam frame
-    IplImage* frame_ipl = cvQueryFrame( capture );
+    IplImage* frame_ipl = NULL;
+    if (rift_manager->which_eye()=='r')
+        frame_ipl = cvQueryFrame( r_capture );
+    else
+        frame_ipl = cvQueryFrame( l_capture );
+
     // I suspect that frame_ipl should be freed but 
     //  the leak is small enough not to matter if it exists at all.
     //  %TODO
@@ -290,11 +352,16 @@ void glut_display(){
         if (!draw_main_image)
             frame = Mat(frame.size(), frame.type());
 
-        if (apply_threshold || apply_sobel)
+        if (apply_threshold)
             cvtColor(gray2, frame, CV_GRAY2BGR);
         else if (black_and_white)
             cvtColor(gray, frame, CV_GRAY2BGR);
-
+        else if (apply_sobel){
+            Mat tmpgray;
+            cvtColor(gray2, tmpgray, CV_GRAY2BGR);
+            addWeighted( tmpgray, 0.5, frame, 0.5, 0, frame );
+        }
+        
         if (apply_features)
             // Add results to image and save.
             cv::drawKeypoints(frame, keypoints, frame);
@@ -305,55 +372,9 @@ void glut_display(){
                 drawContours( frame, contours, i, color, 2, 8, hierarchy, 0, Point() );
             }
         }
-
-          /// Gradient X
-          //Scharr( src_gray, grad_x, ddepth, 1, 0, scale, delta, BORDER_DEFAULT );
-
-          /// Gradient Y
-          //Scharr( src_gray, grad_y, ddepth, 0, 1, scale, delta, BORDER_DEFAULT );
-
-
-          /// Total Gradient (approximate)
-          
-
         ConvertMatToTexture(frame, ipl_convert_texture);
     }
 
-    // and get player location
-    Eigen::Vector3f curr_translation(0.0, 0.0, 0.0);
-    Eigen::Vector2f curr_rotation(0.0, 0.0);
-
-    Eigen::Vector3f curr_offset(0.0, 0.0, 0.0);
-    Eigen::Vector3f curr_offset_rpy(0.0, 0.0, 0.0);
-
-    Vector3f curr_t_vec(curr_translation.x(), curr_translation.y(), curr_translation.z());
-    Vector3f curr_r_vec(0.0f, curr_rotation.y()*M_PI/180.0, 0.0f);
-    Vector3f curr_o_vec(curr_offset.x(), curr_offset.y(), curr_offset.z());
-    Vector3f curr_ro_vec(curr_offset_rpy.y(), curr_offset_rpy.x(), curr_offset_rpy.z());
-    curr_ro_vec = Vector3f();
-    // Go do Rift rendering! not using eye offset
-    rift_manager->render(curr_t_vec, curr_r_vec+curr_ro_vec, curr_o_vec, false, render_core);
-
-    double curr = get_framerate();
-    if (currFrameRate != 0.0f)
-        currFrameRate = (10.0f*currFrameRate + curr)/11.0f;
-    else
-        currFrameRate = curr;
-
-    //output useful framerate and status info:
-    //printf ("framerate: %3.1f / %4.1f\n", curr, currFrameRate);
-    // frame was rendered, give the player handler a tick
-
-    totalFrames++;
-}
-
-/* #########################################################################
-    
-                                render_core
-        Render functionality shared between eyes.
-
-   ######################################################################### */
-void render_core(){
     // show ipl convert texture as quad in front of player
     glEnable(GL_TEXTURE_2D);
     glDisable(GL_LIGHTING);
@@ -375,10 +396,19 @@ void render_core(){
     glTexCoord2f(1, 0);
     glVertex3f(1, 1, 0);
     glEnd();
-    glPopMatrix();
+
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_LIGHTING);
     glDisable(GL_TEXTURE_2D);
+
+    // and textbox
+    if (show_textbox_fps){
+        Eigen::Vector3f updog = Eigen::Vector3f(Eigen::Quaternionf::FromTwoVectors(
+            Eigen::Vector3f(0.0, 0.0, -1.0), textbox_fps_pos)*Eigen::Vector3f(0.0, 1.0, 0.0));
+        textbox_fps->draw( updog );
+    }
+
+    glPopMatrix();
 }
 
 /* #########################################################################
@@ -411,6 +441,9 @@ void glut_idle(){
 void normal_key_handler(unsigned char key, int x, int y) {
     rift_manager->normal_key_handler(key, x, y);
     switch (key) {
+        case 'h':
+            show_textbox_fps = !show_textbox_fps;
+            break;
         case '+':
         case '=':
             render_dist += 0.05;
@@ -457,7 +490,7 @@ void normal_key_handler(unsigned char key, int x, int y) {
             printf("Threshold val %d\n", threshold_val);
             break;
         case '}':
-            if (canny_thresh < 120)
+            if (canny_thresh < 200)
                 canny_thresh+=5;
             printf("Canny threshold val %d\n", canny_thresh);
             break;
@@ -467,15 +500,26 @@ void normal_key_handler(unsigned char key, int x, int y) {
             printf("Canny threshold val %d\n", canny_thresh);
             break;
         case '<':
-            if (capture_num > 0)
-                capture_num-=1;
-            capture = cvCaptureFromCAM(capture_num); 
-            printf("Capture num %d\n", capture_num);
+            if (l_capture_num > 0)
+                l_capture_num-=1;
+            l_capture = cvCaptureFromCAM(l_capture_num); 
+            printf("Capture num %d\n", l_capture_num);
             break;
         case '>':
-            capture_num++;
-            capture = cvCaptureFromCAM(capture_num); 
-            printf("Capture num %d\n", capture_num);
+            l_capture_num++;
+            l_capture = cvCaptureFromCAM(l_capture_num); 
+            printf("Capture num %d\n", l_capture_num);
+            break;
+        case ',':
+            if (r_capture_num > 0)
+                r_capture_num-=1;
+            r_capture = cvCaptureFromCAM(r_capture_num); 
+            printf("Capture num %d\n", r_capture_num);
+            break;
+        case '.':
+            r_capture_num++;
+            r_capture = cvCaptureFromCAM(r_capture_num); 
+            printf("Capture num %d\n", r_capture_num);
             break;
         default:
             break;
@@ -550,7 +594,7 @@ void motion(int x, int y){
                 TIMING PURPOSES
    ######################################################################### */     
 double get_framerate ( ) {
-    double elapsed = (double) get_elapsed(GET_ELAPSED_FRAMERATE);
+    double elapsed = (1./1000.)*(double) get_elapsed(GET_ELAPSED_FRAMERATE);
     double ret;
     if (elapsed != 0.){
         ret = ((double)totalFrames) / elapsed;

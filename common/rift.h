@@ -62,7 +62,10 @@ namespace xen_rift {
 						bool use_EyeOffset, void (*draw_scene)(void));
 			void render_one_eye(const OVR::Util::Render::StereoEyeParams& stereo, 
                             OVR::Matrix4f view_mat, OVR::Vector3f EyePos, void (*draw_scene)(void));
+			char which_eye( void ) { return _which_eye; }
+
 		protected:
+			char _which_eye;
 			bool _have_rift;
 		    // *** Rendering Variables
 		    int                 _width;

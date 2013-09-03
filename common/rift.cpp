@@ -34,7 +34,8 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
             _mouselook(0),
             _mouseButtons(0),
             _c_down(false),
-            _have_rift(false)
+            _have_rift(false),
+            _which_eye('n')
             {
     _verbose = verbose;
 
@@ -435,7 +436,7 @@ void Rift::stereoWarp(GLuint outFBO, GLuint inTexture)
 
 void Rift::render(Vector3f EyePos, Vector3f EyeRot, OVR::Vector3f EyeOffset, 
                   bool use_EyeOffset, void (*draw_scene)(void)){
-    
+
     // Rotate and position View Camera, using YawPitchRoll in BodyFrame coordinates.
     Matrix4f rollPitchYaw = Matrix4f::RotationY(_EyeYaw+EyeRot.y) * 
                             Matrix4f::RotationX(_EyePitch+EyeRot.x) *
@@ -479,10 +480,13 @@ void Rift::render(Vector3f EyePos, Vector3f EyeRot, OVR::Vector3f EyeOffset,
         break;
 
     case Stereo_LeftRight_Multipass:
+        _which_eye = 'l';
         render_one_eye(stereo_left, View, EyePos, draw_scene);
+        _which_eye = 'r';
         render_one_eye(stereo_right, View, EyePos, draw_scene);
         break;
     }
+    _which_eye = 'n';
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Apply stereowarp, mapping it out to second framebuffer

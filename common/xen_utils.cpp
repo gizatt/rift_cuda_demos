@@ -73,7 +73,7 @@ unsigned long xen_rift::get_elapsed(int index){
         lastTicks_elapsed[index] = currTicks;
         return 0;
     }
-    double elapsed = (((double)(currTicks - lastTicks_elapsed[index]))/((double)perfFreq))*1000;
+    double elapsed = (((double)(currTicks - lastTicks_elapsed[index]))/((double)perfFreq))*1000.0;
     lastTicks_elapsed[index] = currTicks;
     return elapsed;
 }
