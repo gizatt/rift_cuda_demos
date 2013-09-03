@@ -4,14 +4,6 @@
     Many of the filtering options are direct rips from the opencv
     tutorials on their site, btw.
 
-        Press:
-            c to enable contour detection ({/} change threshold)
-            t to enable thresholding ([/] change threshold)
-            b to enable black/white 
-            s to enable sobel
-            and press +/- to draw image closer or farther to get
-                the rough projection size correct.
-
    Rev history:
      Gregory Izatt  20130901 Init revision
    ######################################################################### */    
@@ -361,7 +353,7 @@ void render_core(){
             cvtColor(gray2, tmpgray, CV_GRAY2BGR);
             addWeighted( tmpgray, 0.5, frame, 0.5, 0, frame );
         }
-        
+
         if (apply_features)
             // Add results to image and save.
             cv::drawKeypoints(frame, keypoints, frame);
