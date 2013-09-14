@@ -16,9 +16,14 @@
 
 #include "../common/rift.h"
 #include "../common/textbox_3d.h"
+#include "../common/xen_utils.h"
 
 // handy image loading
 #include "../include/SOIL.h"
+
+// kinect
+#include "libfreenect.h"
+#include "libfreenect_sync.h"
 
 // use protection guys
 using namespace std;
@@ -48,7 +53,7 @@ CvCapture* r_capture;
 int r_capture_num = 1;
 
 GLuint ipl_convert_texture;
-float render_dist = 1.95;
+float render_dist = 1.5;
 bool draw_main_image = true;
 bool black_and_white = false;
 bool apply_threshold = false;
@@ -59,10 +64,23 @@ int threshold_val = 100;
 int canny_thresh = 100;
 RNG rng(12345);
 
+// basic kinect support
+bool show_kinect = false;
+GLuint gl_rgb_tex;
+unsigned int indices[480][640];
+float xyz[480][640][3];
+short *depth = 0;
+char *rgb = 0;
+Textbox_3D * textbox_kinect;
+Eigen::Vector3f textbox_kinect_pos(2.0, -2.0, -2.0);
+
+float z_pos = 0.0;
+
 // FPS textbox
 Textbox_3D * textbox_fps;
-Eigen::Vector3f textbox_fps_pos(-2.0, -2.0, -0.5);
-bool show_textbox_fps = false;
+Eigen::Vector3f textbox_fps_pos(-2.0, -2.0, -2.0);
+
+bool show_textbox_hud = false;
 
 /* #########################################################################
     
@@ -94,7 +112,9 @@ double get_elapsed();
 
 //convenience conversion
 void ConvertMatToTexture(Mat &image, GLuint texture);
-
+// for manipulating kinect depth data
+void LoadVertexMatrix();
+void LoadRGBMatrix();
 
 /* #########################################################################
     
@@ -108,6 +128,13 @@ void ConvertMatToTexture(Mat &image, GLuint texture);
         
    ######################################################################### */    
 int main(int argc, char* argv[]) {    
+
+/*
+    printf("\n\n\n");
+    printf("Hello world\n");
+
+    return 0;
+*/
 
     //Deal with cmd-line args
     //printf("argc = %d, argv[0] = %s, argv[1] = %s\n",argc, argv[0], argv[1]);
@@ -142,6 +169,8 @@ int main(int argc, char* argv[]) {
     //Rift
     rift_manager = new Rift(1280, 720, true);
 
+    printf("On to cam capture\n");
+    
     //opencv capture
     l_capture = cvCaptureFromCAM(l_capture_num); 
     r_capture = cvCaptureFromCAM(r_capture_num); 
@@ -150,13 +179,17 @@ int main(int argc, char* argv[]) {
     Eigen::Vector3f tmpdir = -1.0*textbox_fps_pos;
     textbox_fps = new Textbox_3D(string("FPS: NNN"), textbox_fps_pos, 
            tmpdir, 1.5, 0.8, 0.05, 5);
+    //kinect textbox
+    tmpdir = -1.0*textbox_kinect_pos;
+    textbox_kinect = new Textbox_3D(string("K: OFF"), textbox_kinect_pos, 
+           tmpdir, 1.5, 0.8, 0.05, 5);
 
     printf("done!\n");
     glutMainLoop();
 
     cvReleaseCapture( &l_capture );
     cvReleaseCapture( &r_capture );
-    return(1);
+    return 0;
 }
 
 
@@ -222,6 +255,17 @@ void initOpenGL(int w, int h, void*d = NULL) {
 
     glGenTextures(1,&ipl_convert_texture);
 
+    glEnable(GL_DEPTH_TEST);
+    glGenTextures(1, &gl_rgb_tex);
+    glEnable( GL_TEXTURE_2D );
+    glBindTexture(GL_TEXTURE_2D, gl_rgb_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDisable( GL_TEXTURE_2D );
+
     glFinish();
 }
 
@@ -248,6 +292,31 @@ void glut_display(){
     //Clear out buffers before rendering the new scene
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    // grab kinect if we're doing that
+    if (show_kinect){
+        uint32_t ts;
+        if (freenect_sync_get_depth((void**)&depth, &ts, 0, FREENECT_DEPTH_11BIT) < 0){
+            show_kinect = false;
+        } else {
+            if (freenect_sync_get_video((void**)&rgb, &ts, 0, FREENECT_VIDEO_RGB) < 0){
+                show_kinect = false;
+            } else {
+                int i,j;
+                for (i = 0; i < 480; i++) {
+                    for (j = 0; j < 640; j++) {
+                        xyz[i][j][0] = ((float)j)/640.;
+                        xyz[i][j][1] = ((float)i)/480.;
+                        if (depth[i*640+j] >= 2047)
+                            xyz[i][j][2] = 10000.0;
+                        else
+                            xyz[i][j][2] = -1.0*((float)depth[i*640+j])/2048.;
+                        indices[i][j] = i*640+j;
+                    }
+                }
+            }
+        }
+    }
+
     // and get player location
     Eigen::Vector3f curr_translation(0.0, 0.0, 0.0);
     Eigen::Vector2f curr_rotation(0.0, 0.0);
@@ -273,6 +342,12 @@ void glut_display(){
     sprintf(tmp, "FPS: %0.3f", currFrameRate);
     textbox_fps->set_text(string(tmp));
 
+    if (show_kinect)
+        sprintf(tmp, "K: ON");
+    else
+        sprintf(tmp, "K: OFF");
+    textbox_kinect->set_text(string(tmp));
+
     //output useful framerate and status info:
     // printf ("framerate: %3.1f / %4.1f\n", curr, currFrameRate);
     // frame was rendered, give the player handler a tick
@@ -287,6 +362,9 @@ void glut_display(){
 
    ######################################################################### */
 void render_core(){
+
+    glDisable(GL_LIGHTING);
+    glEnable(GL_DEPTH_TEST);
 
     //capture webcam frame
     IplImage* frame_ipl = NULL;
@@ -364,43 +442,95 @@ void render_core(){
                 drawContours( frame, contours, i, color, 2, 8, hierarchy, 0, Point() );
             }
         }
-        ConvertMatToTexture(frame, ipl_convert_texture);
+
+        if (draw_main_image || apply_features || apply_canny_contours ||
+                apply_sobel || apply_threshold || black_and_white ) {
+
+            ConvertMatToTexture(frame, ipl_convert_texture);
+            glEnable(GL_TEXTURE_2D);
+            glBindTexture(GL_TEXTURE_2D, ipl_convert_texture);
+            glPushMatrix();
+            glLoadIdentity();
+            glTranslatef(0.0, 0.0, -1.0*render_dist);
+            glBegin(GL_POLYGON);
+            glTexCoord2f(0, 0);
+            glVertex3f(-1, 1, 0);
+            
+            glTexCoord2f(0, 1);
+            glVertex3f(-1, -1, 0);
+            
+            glTexCoord2f(1, 1);
+            glVertex3f(1, -1, 0);
+            
+            glTexCoord2f(1, 0);
+            glVertex3f(1, 1, 0);
+            glEnd();
+            glDisable(GL_TEXTURE_2D);
+            glPopMatrix();
+        }
     }
 
-    // show ipl convert texture as quad in front of player
-    glEnable(GL_TEXTURE_2D);
-    glDisable(GL_LIGHTING);
-    glDisable(GL_DEPTH_TEST);
-    glBindTexture(GL_TEXTURE_2D, ipl_convert_texture);
-    glPushMatrix();
-    glLoadIdentity();
-    glTranslatef(0.0, 0.0, -1.0*render_dist);
-    glBegin(GL_POLYGON);
-    glTexCoord2f(0, 0);
-    glVertex3f(-1, 1, 0);
-    
-    glTexCoord2f(0, 1);
-    glVertex3f(-1, -1, 0);
-    
-    glTexCoord2f(1, 1);
-    glVertex3f(1, -1, 0);
-    
-    glTexCoord2f(1, 0);
-    glVertex3f(1, 1, 0);
-    glEnd();
-
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_LIGHTING);
-    glDisable(GL_TEXTURE_2D);
-
-    // and textbox
-    if (show_textbox_fps){
+    // and textboxs
+    if (show_textbox_hud){
+        glPushMatrix();
+        glLoadIdentity();
         Eigen::Vector3f updog = Eigen::Vector3f(Eigen::Quaternionf::FromTwoVectors(
             Eigen::Vector3f(0.0, 0.0, -1.0), textbox_fps_pos)*Eigen::Vector3f(0.0, 1.0, 0.0));
         textbox_fps->draw( updog );
+        updog = Eigen::Vector3f(Eigen::Quaternionf::FromTwoVectors(
+            Eigen::Vector3f(0.0, 0.0, -1.0), textbox_kinect_pos)*Eigen::Vector3f(0.0, 1.0, 0.0));
+        textbox_kinect->draw( updog );
+        glPopMatrix();
     }
 
-    glPopMatrix();
+    // and kinect if we're doing it
+    if (show_kinect){
+        glDisable(GL_LIGHTING);
+        glPushMatrix();
+        glLoadIdentity();
+
+        glRotatef(180.0f,0.0f,0.0f,-1.0f);
+        glScalef(-1.0, 1.0, 1.0);
+        glTranslatef(-0.5, -0.5, -0.5);
+        
+
+        if (rift_manager->which_eye() == 'r')
+            glTranslatef(-0.1, 0.0, 0.0);
+        else
+            glTranslatef(0.1, 0.0, 0.0);
+
+        // Set the projection from the XYZ to the texture image
+        glMatrixMode(GL_TEXTURE);
+        glPushMatrix();
+        glLoadIdentity();
+        glScalef(1.0f,1.0f,1.0f);
+        //LoadRGBMatrix();
+        //LoadVertexMatrix();
+        glMatrixMode(GL_MODELVIEW);
+
+        glPointSize(2);
+
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glVertexPointer(3, GL_FLOAT, 0, xyz);
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+        glTexCoordPointer(3, GL_FLOAT, 0, xyz);
+
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, gl_rgb_tex);
+        glTexImage2D(GL_TEXTURE_2D, 0, 3, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, rgb);
+
+        glPointSize(2.0f);
+        glDrawElements(GL_POINTS, 640*480, GL_UNSIGNED_INT, indices);
+        glDisable(GL_TEXTURE_2D);
+
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+        glDisableClientState(GL_VERTEX_ARRAY);
+
+        glMatrixMode(GL_TEXTURE);
+        glPopMatrix();
+        glMatrixMode(GL_MODELVIEW);
+        glPopMatrix();
+    }
 }
 
 /* #########################################################################
@@ -434,7 +564,7 @@ void normal_key_handler(unsigned char key, int x, int y) {
     rift_manager->normal_key_handler(key, x, y);
     switch (key) {
         case 'h':
-            show_textbox_fps = !show_textbox_fps;
+            show_textbox_hud = !show_textbox_hud;
             break;
         case '+':
         case '=':
@@ -513,6 +643,18 @@ void normal_key_handler(unsigned char key, int x, int y) {
             r_capture = cvCaptureFromCAM(r_capture_num); 
             printf("Capture num %d\n", r_capture_num);
             break;
+        case 'k':
+            show_kinect = !show_kinect;
+            break;
+        case 'q':
+            z_pos += 5.0;
+            printf("%f\n", z_pos);
+            break;
+        case 'w':
+            z_pos -= 5.0;
+            printf("%f\n", z_pos);
+            break;
+
         default:
             break;
     }
@@ -616,4 +758,38 @@ void ConvertMatToTexture(Mat &image, GLuint texture)
   glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
   gluBuild2DMipmaps(GL_TEXTURE_2D,3,image.size().width,image.size().height,
                     GL_BGR,GL_UNSIGNED_BYTE,image.ptr());
+}
+
+// Do the projection from u,v,depth to X,Y,Z directly in an opengl matrix
+// These numbers come from a combination of the ros kinect_node wiki, and
+// nicolas burrus' posts.
+//  -- freenect examples
+void LoadVertexMatrix()
+{
+    float fx = 594.21f;
+    float fy = 591.04f;
+    float a = -0.0030711f;
+    float b = 3.3309495f;
+    float cx = 339.5f;
+    float cy = 242.7f;
+    GLfloat mat[16] = {
+        1/fx,     0,  0, 0,
+        0,    -1/fy,  0, 0,
+        0,       0,  0, a,
+        -cx/fx, cy/fy, -1, b
+    };
+    glMultMatrixf(mat);
+}
+// This matrix comes from a combination of nicolas burrus's calibration post
+// and some python code I haven't documented yet.
+//  -- freenect examples
+void LoadRGBMatrix()
+{
+    float mat[16] = {
+        5.34866271e+02,   3.89654806e+00,   0.00000000e+00,   1.74704200e-02,
+        -4.70724694e+00,  -5.28843603e+02,   0.00000000e+00,  -1.22753400e-02,
+        -3.19670762e+02,  -2.60999685e+02,   0.00000000e+00,  -9.99772000e-01,
+        -6.98445586e+00,   3.31139785e+00,   0.00000000e+00,   1.09167360e-02
+    };
+    glMultMatrixf(mat);
 }

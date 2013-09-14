@@ -25,6 +25,9 @@
 //Windows
 #include <windows.h>
 
+//pthread for mutex
+#include <pthread.h>
+
 #include "Eigen/Dense"
 #include "Eigen/Geometry"
 
@@ -52,6 +55,23 @@ namespace xen_rift {
 
     //load a skybox cubemap from a base string
     int loadSkyBox(char * base_str, GLuint * out);
+
+    // mutex wrapper linking over into pthread
+    class Mutex {
+    public:
+        Mutex() {
+            pthread_mutex_init( &m_mutex, NULL );
+        }
+        void lock() {
+            pthread_mutex_lock( &m_mutex );
+        }
+        void unlock() {
+            pthread_mutex_unlock( &m_mutex );
+        }
+    private:
+        pthread_mutex_t m_mutex;
+    };
+
 }
 
 #endif //__XEN_UTILS_H

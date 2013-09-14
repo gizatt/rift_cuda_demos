@@ -24,14 +24,27 @@ OPENCVIDIR="$(OPENCVDIR)\build\include"
 OPENCVSLDIR="$(OPENCVDIR)\build\x86\vc10\staticlib"
 OPENCVLDIR="$(OPENCVDIR)\build\x86\vc10\lib"
 
+## UPDATE TO PTHREAD DIR
+PTHREADDIR=C:\Users\gizatt\Dropbox\Programming\pthreads-w32\Pre-built.2
+PTHREADIDIR="$(PTHREADDIR)/include"
+PTHREADLDIR="$(PTHREADDIR)/lib"
+
+## UPDATE TO LIBFREENECT DIR
+LIBFREENECTDIR=C:\Users\gizatt\Dropbox\Programming\libfreenect
+LIBFREENECTIWDIR="$(LIBFREENECTDIR)\wrappers\cpp"
+LIBFREENECTISDIR="$(LIBFREENECTDIR)\wrappers\c_sync"
+LIBFREENECTIDIR="$(LIBFREENECTDIR)\include"
+LIBFREENECTLDIR="$(LIBFREENECTDIR)\build\lib\Release"
+
 ODIR=./obj
 IDIR=./include
 BDIR=./bin
 
-CFLAGS=/I$(RIFTIDIR) /I$(HYDRAIDIR) /I$(IDIR) /I$(OPENCVDIR) /I$(OPENCVIDIR)
+CFLAGS=/I$(RIFTIDIR) /I$(HYDRAIDIR) /I$(IDIR) /I$(OPENCVDIR) /I$(OPENCVIDIR) /I$(PTHREADIDIR)\
+	/I$(LIBFREENECTIDIR) /I$(LIBFREENECTIWDIR) /I$(LIBFREENECTISDIR)
 LFLAGS= /MD /link /LIBPATH:./lib /LIBPATH:$(RIFTLDIR) /NODEFAULTLIB:LIBCMT\
 	SOIL.lib sixensed.lib sixense_utilsd.lib libovr.lib libovrd.lib opengl32.lib User32.lib Gdi32.lib \
-    glew32d.lib cutil32d.lib shell32.lib
+    glew32d.lib cutil32d.lib shell32.lib 
 
 NVCC_CFLAGS=
 NVCC_LFLAGS= -L./lib -Xlinker=/NODEFAULTLIB:MSVCRT -Xlinker=/NODEFAULTLIB:LIBCMT \
@@ -40,7 +53,8 @@ NVCC_LFLAGS= -L./lib -Xlinker=/NODEFAULTLIB:MSVCRT -Xlinker=/NODEFAULTLIB:LIBCMT
     -lglew32d -lcutil32d --optimize 9001 \
     -use_fast_math
 
-all: $(BDIR)/simple_particle_swirl.exe $(BDIR)/webcam_feedthrough.exe
+all: $(BDIR)/simple_particle_swirl.exe $(BDIR)/webcam_feedthrough.exe \
+		$(BDIR)/oct_volume_display.exe $(BDIR)/trackball.exe
 
 $(BDIR)/simple_particle_swirl.exe: $(ODIR)/player.obj $(ODIR)/rift.obj $(ODIR)/hydra.obj \
 	$(ODIR)/xen_utils.obj $(ODIR)/ironman_hud.obj \
@@ -65,7 +79,16 @@ $(BDIR)/webcam_feedthrough.exe: $(ODIR)/rift.obj $(ODIR)/xen_utils.obj $(ODIR)/t
 	$(CL) webcam_feedthrough/webcam_feedthrough.cpp $(CFLAGS) /Fe$@  \
 		$(LFLAGS) /LIBPATH:$(OPENCVLDIR) /LIBPATH:$(OPENCVSLDIR) $(ODIR)/rift.obj \
 		$(ODIR)/xen_utils.obj $(ODIR)/textbox_3d.obj opencv_core246.lib opencv_highgui246.lib \
-		opencv_imgproc246.lib opencv_features2d246.lib
+		opencv_imgproc246.lib opencv_features2d246.lib \
+		/LIBPATH:$(LIBFREENECTLDIR) freenect.lib /LIBPATH:$(PTHREADLDIR) pthreadVC2.lib \
+		freenect_sync.lib
+
+$(BDIR)/oct_volume_display.exe: $(ODIR)/rift.obj $(ODIR)/xen_utils.obj $(ODIR)/textbox_3d.obj \
+		oct_volume_display/oct_volume_display.cpp oct_volume_display/oct_volume_display.h
+	vcvars32
+	$(CL) oct_volume_display/oct_volume_display.cpp $(CFLAGS) /Fe$@  \
+		$(LFLAGS) $(ODIR)/rift.obj \
+		$(ODIR)/xen_utils.obj $(ODIR)/textbox_3d.obj
 
 $(ODIR)/player.obj: $(ODIR)/textbox_3d.obj common/player.cpp common/player.h
 	vcvars32
@@ -88,9 +111,15 @@ $(ODIR)/ironman_hud.obj: $(ODIR)/xen_utils.obj common/ironman_hud.cpp \
 	vcvars32
 	$(CL) /c common/ironman_hud.cpp $(CFLAGS) /Fo$@ $(LFLAGS)
 
+$(ODIR)/kinect.obj: common/kinect.cpp common/kinect.h $(ODIR)/xen_utils.obj
+	vcvars32
+	$(CL) /c common/kinect.cpp $(CFLAGS) /Fo$@ $(LFLAGS) /LIBPATH:$(LIBFREENECTLDIR) \
+		/LIBPATH:$(OPENCVLDIR) /LIBPATH:$(OPENCVSLDIR) opencv_core246.lib
+
 $(ODIR)/xen_utils.obj: common/xen_utils.cpp common/xen_utils.h
 	vcvars32
-	$(CL) /c common/xen_utils.cpp $(CFLAGS) /Fo$@ $(LFLAGS)
+	$(CL) /c common/xen_utils.cpp $(CFLAGS) /Fo$@ $(LFLAGS) /LIBPATH:$(PTHREADLDIR) \
+		pthreadVC2.lib
 
 # Clean & Debug
 .PHONY: clean

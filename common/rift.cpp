@@ -164,11 +164,18 @@ Rift::Rift(int inputWidth, int inputHeight, bool verbose) :
 
     // Set up shaders (these aren't presently in use)
     _program_num = glCreateProgram();
+    if (verbose){
+        printf("Loading passthrough shaders\n");
+    }
     load_shaders("../shaders/rift_vert_shader.vert", &_vshader_num, 
                 "../shaders/rift_frag_shader.frag", &_fshader_num);
     glAttachShader(_program_num, _fshader_num);
     glAttachShader(_program_num, _vshader_num);
     glLinkProgram(_program_num);
+
+    if (verbose){
+        printf("Loading warp shaders\n");
+    }
 
     // set up warp shaders (these are def. in use!)
     _warpShaderID = glCreateProgram();
@@ -554,17 +561,12 @@ void Rift::render_one_eye(const StereoEyeParams& stereo,
     glMatrixMode(GL_MODELVIEW);
     //glLoadIdentity();
     //glTranslatef( EyePos.x, EyePos.y, EyePos.z );
-    //printf("View:\n");
     for (int i=0; i<4; i++){
-        //printf("    ");
         for (int j=0; j<4; j++){
             // tranpose this too...
             tmp[j*4+i] = real_mv.M[i][j];
-            //printf("| %5f |", tmp[j*4+i]);
         }
-        //printf("\n");
     }
-    //printf("\n");
     glLoadMatrixf(tmp);
 
     // Call main renderer
